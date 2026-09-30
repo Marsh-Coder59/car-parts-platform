@@ -14,7 +14,6 @@ export const Input = React.forwardRef<HTMLInputElement, InputProps>(
     const inputId = id || label?.toLowerCase().replace(/\s/g, '_');
     const isPassword = type === 'password';
     const [showPassword, setShowPassword] = useState(false);
-
     const inputType = isPassword ? (showPassword ? 'text' : 'password') : type;
 
     return (
@@ -40,8 +39,10 @@ export const Input = React.forwardRef<HTMLInputElement, InputProps>(
               'placeholder:text-gray-400',
               leftIcon ? 'pl-10' : 'px-4',
               isPassword ? 'pr-10 py-2.5' : 'pr-4 py-2.5',
-              !leftIcon && !isPassword && 'px-4',
+              leftIcon && !isPassword && 'pl-10 pr-4 py-2.5',
               leftIcon && isPassword && 'pl-10 pr-10 py-2.5',
+              !leftIcon && !isPassword && 'px-4 py-2.5',
+              !leftIcon && isPassword && 'px-4 pr-10 py-2.5',
               error
                 ? 'border-red-400 bg-red-50 focus:ring-red-400'
                 : 'border-gray-300 bg-white hover:border-gray-400',

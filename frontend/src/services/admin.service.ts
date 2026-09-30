@@ -226,6 +226,13 @@ export const adminService = {
   },
 };
 
+  async uploadSettingsImage(formData: FormData): Promise<{ url: string }> {
+    const res = await apiClient.post<{ url: string }>('/api/admin/settings/upload-image', formData, {
+      headers: { 'Content-Type': 'multipart/form-data' },
+    });
+    return res.data;
+  },
+
 export const publicSettingsService = {
   async get() {
     const res = await apiClient.get('/api/settings/public');

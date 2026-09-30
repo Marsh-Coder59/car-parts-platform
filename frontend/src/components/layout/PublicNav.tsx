@@ -35,12 +35,8 @@ export default function PublicNav() {
     <header className="sticky top-0 z-40 bg-white border-b border-gray-100 shadow-sm">
       <div className="max-w-7xl mx-auto px-4 sm:px-6">
         <div className="flex items-center gap-4 h-16">
-          {/* Logo */}
-          <Link to="/" className="flex-shrink-0">
-            <Logo size="sm" />
-          </Link>
+          <Link to="/" className="flex-shrink-0"><Logo size="sm" /></Link>
 
-          {/* Search — hidden on mobile */}
           <form onSubmit={handleSearch} className="hidden md:flex flex-1 max-w-xl">
             <div className="relative w-full">
               <Search className="absolute left-3 top-1/2 -translate-y-1/2 h-4 w-4 text-gray-400" />
@@ -53,24 +49,15 @@ export default function PublicNav() {
             </div>
           </form>
 
-          {/* Desktop nav */}
           <nav className="hidden md:flex items-center gap-1 ml-auto">
-            <Link to="/products" className="px-3 py-2 text-sm font-medium text-gray-600 hover:text-gray-900 hover:bg-gray-50 rounded-lg transition-colors">
-              Products
-            </Link>
-            <Link to="/categories" className="px-3 py-2 text-sm font-medium text-gray-600 hover:text-gray-900 hover:bg-gray-50 rounded-lg transition-colors">
-              Categories
-            </Link>
-            <Link to="/brands" className="px-3 py-2 text-sm font-medium text-gray-600 hover:text-gray-900 hover:bg-gray-50 rounded-lg transition-colors">
-              Brands
-            </Link>
+            <Link to="/products" className="px-3 py-2 text-sm font-medium text-gray-600 hover:text-gray-900 hover:bg-gray-50 rounded-lg transition-colors">Products</Link>
+            <Link to="/categories" className="px-3 py-2 text-sm font-medium text-gray-600 hover:text-gray-900 hover:bg-gray-50 rounded-lg transition-colors">Categories</Link>
+            <Link to="/brands" className="px-3 py-2 text-sm font-medium text-gray-600 hover:text-gray-900 hover:bg-gray-50 rounded-lg transition-colors">Brands</Link>
 
             {isAuthenticated ? (
               <>
                 {isStaffOrAdmin && (
-                  <Link to="/admin" className="px-3 py-2 text-sm font-semibold text-brand-600 hover:text-brand-700 hover:bg-brand-50 rounded-lg transition-colors">
-                    Admin
-                  </Link>
+                  <Link to="/admin" className="px-3 py-2 text-sm font-semibold text-brand-600 hover:text-brand-700 hover:bg-brand-50 rounded-lg transition-colors">Admin</Link>
                 )}
                 <Link to="/wishlist" className="relative p-2 text-gray-600 hover:text-gray-900 hover:bg-gray-50 rounded-lg transition-colors">
                   <Heart className="h-5 w-5" />
@@ -87,39 +74,29 @@ export default function PublicNav() {
                   <Bell className="h-5 w-5" />
                 </Link>
                 <Link to="/account" className="flex items-center gap-1.5 px-3 py-2 text-sm font-medium text-gray-700 hover:bg-gray-50 rounded-lg transition-colors">
-                  <User className="h-4 w-4" />
-                  {user?.first_name}
+                  <User className="h-4 w-4" />{user?.first_name}
                 </Link>
                 <button
                   onClick={handleLogout}
                   className="flex items-center gap-1.5 px-3 py-2 text-sm font-medium text-gray-600 hover:text-red-600 hover:bg-red-50 rounded-lg transition-colors"
-                  title="Sign out"
                 >
-                  <LogOut className="h-4 w-4" />
-                  Sign Out
+                  <LogOut className="h-4 w-4" />Sign Out
                 </button>
               </>
             ) : (
               <>
-                <Link to="/login" className="px-4 py-2 text-sm font-medium text-gray-700 hover:bg-gray-50 rounded-lg transition-colors">
-                  Sign In
-                </Link>
-                <Link to="/register" className="px-4 py-2 text-sm font-semibold bg-brand-500 text-white rounded-lg hover:bg-brand-600 transition-colors">
-                  Sign Up
-                </Link>
+                <Link to="/login" className="px-4 py-2 text-sm font-medium text-gray-700 hover:bg-gray-50 rounded-lg transition-colors">Sign In</Link>
+                <Link to="/register" className="px-4 py-2 text-sm font-semibold bg-brand-500 text-white rounded-lg hover:bg-brand-600 transition-colors">Sign Up</Link>
               </>
             )}
           </nav>
 
-          {/* Mobile: cart + burger */}
           <div className="flex items-center gap-2 ml-auto md:hidden">
             {isAuthenticated && (
               <Link to="/cart" className="relative p-2 text-gray-600">
                 <ShoppingCart className="h-5 w-5" />
                 {cartCount > 0 && (
-                  <span className="absolute -top-0.5 -right-0.5 flex items-center justify-center w-4 h-4 text-[9px] font-bold bg-brand-500 text-white rounded-full">
-                    {cartCount}
-                  </span>
+                  <span className="absolute -top-0.5 -right-0.5 flex items-center justify-center w-4 h-4 text-[9px] font-bold bg-brand-500 text-white rounded-full">{cartCount}</span>
                 )}
               </Link>
             )}
@@ -129,7 +106,6 @@ export default function PublicNav() {
           </div>
         </div>
 
-        {/* Mobile search */}
         <form onSubmit={handleSearch} className="md:hidden pb-3">
           <div className="relative">
             <Search className="absolute left-3 top-1/2 -translate-y-1/2 h-4 w-4 text-gray-400" />
@@ -142,35 +118,24 @@ export default function PublicNav() {
           </div>
         </form>
 
-        {/* Mobile menu */}
         {menuOpen && (
           <div className="md:hidden border-t border-gray-100 py-3 space-y-1">
-            {[
-              { to: '/products', label: 'Products' },
-              { to: '/categories', label: 'Categories' },
-              { to: '/brands', label: 'Brands' },
-            ].map(({ to, label }) => (
-              <Link key={to} to={to} onClick={() => setMenuOpen(false)}
-                className="block px-4 py-2 text-sm font-medium text-gray-700 hover:bg-gray-50 rounded-lg">
-                {label}
-              </Link>
+            {[{ to: '/products', label: 'Products' }, { to: '/categories', label: 'Categories' }, { to: '/brands', label: 'Brands' }].map(({ to, label }) => (
+              <Link key={to} to={to} onClick={() => setMenuOpen(false)} className="block px-4 py-2 text-sm font-medium text-gray-700 hover:bg-gray-50 rounded-lg">{label}</Link>
             ))}
             {isAuthenticated ? (
               <>
                 {isStaffOrAdmin && (
-                  <Link to="/admin" onClick={() => setMenuOpen(false)} className="block px-4 py-2 text-sm font-semibold text-brand-600 hover:bg-brand-50 rounded-lg">
-                    Admin Panel
-                  </Link>
+                  <Link to="/admin" onClick={() => setMenuOpen(false)} className="block px-4 py-2 text-sm font-semibold text-brand-600 hover:bg-brand-50 rounded-lg">Admin Panel</Link>
                 )}
                 <Link to="/account" onClick={() => setMenuOpen(false)} className="block px-4 py-2 text-sm font-medium text-gray-700 hover:bg-gray-50 rounded-lg">My Account</Link>
                 <Link to="/orders" onClick={() => setMenuOpen(false)} className="block px-4 py-2 text-sm font-medium text-gray-700 hover:bg-gray-50 rounded-lg">My Orders</Link>
                 <Link to="/wishlist" onClick={() => setMenuOpen(false)} className="block px-4 py-2 text-sm font-medium text-gray-700 hover:bg-gray-50 rounded-lg">Wishlist</Link>
                 <button
                   onClick={() => { setMenuOpen(false); handleLogout(); }}
-                  className="flex items-center gap-2 w-full px-4 py-2 text-sm font-medium text-red-600 hover:bg-red-50 rounded-lg transition-colors"
+                  className="flex items-center gap-2 w-full px-4 py-2 text-sm font-medium text-red-600 hover:bg-red-50 rounded-lg"
                 >
-                  <LogOut className="h-4 w-4" />
-                  Sign Out
+                  <LogOut className="h-4 w-4" />Sign Out
                 </button>
               </>
             ) : (

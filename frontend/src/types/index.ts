@@ -356,6 +356,9 @@ export interface PublicSettings {
   instagram_url?: string;
   tiktok_url?: string;
   x_url?: string;
+  logo_url?: string;
+  favicon_url?: string;
+  banner_url?: string;
 }
 
 export interface AdminSettings extends PublicSettings {

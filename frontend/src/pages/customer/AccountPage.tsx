@@ -33,24 +33,15 @@ export default function AccountPage() {
     if (tab === 'addresses') addressService.list().then(setAddresses);
   }, [tab]);
 
-  // Set avatar preview from existing user profile
   useEffect(() => {
-    if ((user as any)?.avatar_url) {
-      setAvatarPreview((user as any).avatar_url);
-    }
+    if ((user as any)?.avatar_url) setAvatarPreview((user as any).avatar_url);
   }, [user]);
 
   const handleAvatarChange = (e: React.ChangeEvent<HTMLInputElement>) => {
     const file = e.target.files?.[0];
     if (!file) return;
-    if (file.size > 5 * 1024 * 1024) {
-      toast.error('Image must be under 5 MB');
-      return;
-    }
-    if (!file.type.startsWith('image/')) {
-      toast.error('Please select an image file');
-      return;
-    }
+    if (file.size > 5 * 1024 * 1024) { toast.error('Image must be under 5 MB'); return; }
+    if (!file.type.startsWith('image/')) { toast.error('Please select an image file'); return; }
     setAvatarFile(file);
     const reader = new FileReader();
     reader.onload = (ev) => setAvatarPreview(ev.target?.result as string);
@@ -67,18 +58,14 @@ export default function AccountPage() {
       await refresh();
       toast.success('Profile photo updated');
       setAvatarFile(null);
-    } catch (err) {
-      toast.error(getErrorMessage(err));
-    } finally {
-      hideLoading();
-    }
+    } catch (err) { toast.error(getErrorMessage(err)); }
+    finally { hideLoading(); }
   };
 
   const onSaveProfile = async (data: { first_name: string; last_name: string; phone: string }) => {
     showLoading();
     try {
       await userService.updateProfile(data);
-      // Upload avatar if a new file was selected
       if (avatarFile) await handleUploadAvatar();
       await refresh();
       toast.success('Profile updated');
@@ -100,18 +87,10 @@ export default function AccountPage() {
   const onSaveAddress = async (data: Omit<Address, 'id'>) => {
     showLoading();
     try {
-      if (editAddr) {
-        await addressService.update(editAddr.id, data);
-        toast.success('Address updated');
-      } else {
-        await addressService.create(data);
-        toast.success('Address added');
-      }
-      setAddrModal(false);
-      setEditAddr(null);
-      addrForm.reset();
-      const updated = await addressService.list();
-      setAddresses(updated);
+      if (editAddr) { await addressService.update(editAddr.id, data); toast.success('Address updated'); }
+      else { await addressService.create(data); toast.success('Address added'); }
+      setAddrModal(false); setEditAddr(null); addrForm.reset();
+      setAddresses(await addressService.list());
     } catch (err) { toast.error(getErrorMessage(err)); }
     finally { hideLoading(); }
   };
@@ -125,16 +104,8 @@ export default function AccountPage() {
     } catch (err) { toast.error(getErrorMessage(err)); }
   };
 
-  const openEditAddr = (addr: Address) => {
-    setEditAddr(addr);
-    addrForm.reset(addr);
-    setAddrModal(true);
-  };
-
-  // Generate initials for avatar fallback
-  const initials = user
-    ? `${user.first_name?.[0] ?? ''}${user.last_name?.[0] ?? ''}`.toUpperCase()
-    : '?';
+  const openEditAddr = (addr: Address) => { setEditAddr(addr); addrForm.reset(addr); setAddrModal(true); };
+  const initials = user ? `${user.first_name?.[0] ?? ''}${user.last_name?.[0] ?? ''}`.toUpperCase() : '?';
 
   const tabs: { key: Tab; label: string; icon: React.ReactNode }[] = [
     { key: 'profile', label: 'Profile', icon: <User className="h-4 w-4" /> },
@@ -145,105 +116,50 @@ export default function AccountPage() {
   return (
     <div className="max-w-3xl mx-auto px-4 sm:px-6 py-8">
       <h1 className="text-2xl font-bold text-gray-900 mb-6">My Account</h1>
-
-      {/* Tabs */}
       <div className="flex gap-1 bg-gray-100 rounded-xl p-1 mb-6">
         {tabs.map(t => (
           <button key={t.key} onClick={() => setTab(t.key)}
-            className={`flex items-center gap-2 px-4 py-2 rounded-lg text-sm font-medium transition-all flex-1 justify-center
-              ${tab === t.key ? 'bg-white text-gray-900 shadow-sm' : 'text-gray-500 hover:text-gray-700'}`}>
+            className={`flex items-center gap-2 px-4 py-2 rounded-lg text-sm font-medium transition-all flex-1 justify-center ${tab === t.key ? 'bg-white text-gray-900 shadow-sm' : 'text-gray-500 hover:text-gray-700'}`}>
             {t.icon}{t.label}
           </button>
         ))}
       </div>
 
-      {/* Profile */}
       {tab === 'profile' && (
         <div className="bg-white rounded-xl border border-gray-100 p-6">
           <h2 className="text-base font-bold text-gray-900 mb-5">Personal Information</h2>
-
-          {/* ── Profile Picture ── */}
+          {/* Profile Picture */}
           <div className="flex flex-col items-center mb-6 pb-6 border-b border-gray-100">
             <div className="relative group">
-              {/* Avatar circle */}
               <div className="w-24 h-24 rounded-full overflow-hidden bg-brand-100 flex items-center justify-center ring-4 ring-white shadow-md">
-                {avatarPreview ? (
-                  <img
-                    src={avatarPreview}
-                    alt="Profile photo"
-                    className="w-full h-full object-cover"
-                  />
-                ) : (
-                  <span className="text-2xl font-bold text-brand-600">{initials}</span>
-                )}
+                {avatarPreview
+                  ? <img src={avatarPreview} alt="Profile" className="w-full h-full object-cover" />
+                  : <span className="text-2xl font-bold text-brand-600">{initials}</span>}
               </div>
-              {/* Camera overlay button */}
-              <button
-                type="button"
-                onClick={() => fileInputRef.current?.click()}
-                className="absolute inset-0 flex items-center justify-center rounded-full bg-black/40 opacity-0 group-hover:opacity-100 transition-opacity cursor-pointer"
-                aria-label="Change profile photo"
-              >
+              <button type="button" onClick={() => fileInputRef.current?.click()}
+                className="absolute inset-0 flex items-center justify-center rounded-full bg-black/40 opacity-0 group-hover:opacity-100 transition-opacity cursor-pointer">
                 <Camera className="h-6 w-6 text-white" />
               </button>
             </div>
-
-            <input
-              ref={fileInputRef}
-              type="file"
-              accept="image/*"
-              className="hidden"
-              onChange={handleAvatarChange}
-            />
-
-            <p className="mt-3 text-sm font-medium text-gray-900">
-              {user?.first_name} {user?.last_name}
-            </p>
+            <input ref={fileInputRef} type="file" accept="image/*" className="hidden" onChange={handleAvatarChange} />
+            <p className="mt-3 text-sm font-medium text-gray-900">{user?.first_name} {user?.last_name}</p>
             <p className="text-xs text-gray-500 mt-0.5">{user?.email}</p>
-
             <div className="flex items-center gap-2 mt-3">
-              <button
-                type="button"
-                onClick={() => fileInputRef.current?.click()}
-                className="text-xs text-brand-600 hover:text-brand-700 font-medium hover:underline"
-              >
-                Change photo
-              </button>
+              <button type="button" onClick={() => fileInputRef.current?.click()} className="text-xs text-brand-600 hover:text-brand-700 font-medium hover:underline">Change photo</button>
               {avatarPreview && (avatarFile || (user as any)?.avatar_url) && (
-                <button
-                  type="button"
-                  onClick={() => {
-                    setAvatarPreview(null);
-                    setAvatarFile(null);
-                    if (fileInputRef.current) fileInputRef.current.value = '';
-                  }}
-                  className="text-xs text-gray-400 hover:text-red-500 font-medium hover:underline"
-                >
-                  Remove
-                </button>
+                <button type="button" onClick={() => { setAvatarPreview(null); setAvatarFile(null); if (fileInputRef.current) fileInputRef.current.value = ''; }}
+                  className="text-xs text-gray-400 hover:text-red-500 font-medium hover:underline">Remove</button>
               )}
             </div>
             <p className="text-xs text-gray-400 mt-1">JPG, PNG or WEBP · Max 5 MB</p>
-
-            {/* Show upload button only if a new file is staged */}
             {avatarFile && (
-              <button
-                type="button"
-                onClick={handleUploadAvatar}
-                className="mt-2 px-4 py-1.5 text-xs font-semibold bg-brand-500 text-white rounded-lg hover:bg-brand-600 transition-colors"
-              >
-                Upload Photo
-              </button>
+              <button type="button" onClick={handleUploadAvatar} className="mt-2 px-4 py-1.5 text-xs font-semibold bg-brand-500 text-white rounded-lg hover:bg-brand-600 transition-colors">Upload Photo</button>
             )}
           </div>
-
-          {/* ── Profile form ── */}
           <form onSubmit={profileForm.handleSubmit(onSaveProfile)} className="space-y-4">
             <div className="grid grid-cols-2 gap-4">
-              <Input label="First name" {...profileForm.register('first_name', { required: 'Required' })}
-                error={profileForm.formState.errors.first_name?.message} />
-              <Input label="Last name" {...profileForm.register('last_name', { required: 'Required' })}
-                error={profileForm.formState.errors.last_name?.message} />
+              <Input label="First name" {...profileForm.register('first_name', { required: 'Required' })} error={profileForm.formState.errors.first_name?.message} />
+              <Input label="Last name" {...profileForm.register('last_name', { required: 'Required' })} error={profileForm.formState.errors.last_name?.message} />
             </div>
             <div>
               <label className="block text-sm font-medium text-gray-700 mb-1.5">Email</label>
@@ -255,26 +171,18 @@ export default function AccountPage() {
         </div>
       )}
 
-      {/* Password */}
       {tab === 'password' && (
         <div className="bg-white rounded-xl border border-gray-100 p-6">
           <h2 className="text-base font-bold text-gray-900 mb-5">Change Password</h2>
           <form onSubmit={pwdForm.handleSubmit(onChangePassword)} className="space-y-4">
-            <Input label="Current password" type="password"
-              {...pwdForm.register('current_password', { required: 'Required' })}
-              error={pwdForm.formState.errors.current_password?.message} />
-            <Input label="New password" type="password" hint="At least 8 characters"
-              {...pwdForm.register('new_password', { required: 'Required', minLength: { value: 8, message: 'At least 8 characters' } })}
-              error={pwdForm.formState.errors.new_password?.message} />
-            <Input label="Confirm new password" type="password"
-              {...pwdForm.register('confirm', { required: 'Required' })}
-              error={pwdForm.formState.errors.confirm?.message} />
+            <Input label="Current password" type="password" {...pwdForm.register('current_password', { required: 'Required' })} error={pwdForm.formState.errors.current_password?.message} />
+            <Input label="New password" type="password" hint="At least 8 characters" {...pwdForm.register('new_password', { required: 'Required', minLength: { value: 8, message: 'At least 8 characters' } })} error={pwdForm.formState.errors.new_password?.message} />
+            <Input label="Confirm new password" type="password" {...pwdForm.register('confirm', { required: 'Required' })} error={pwdForm.formState.errors.confirm?.message} />
             <Button type="submit">Update Password</Button>
           </form>
         </div>
       )}
 
-      {/* Addresses */}
       {tab === 'addresses' && (
         <div className="space-y-3">
           {addresses.map(addr => (
@@ -289,9 +197,7 @@ export default function AccountPage() {
               </div>
               <div className="flex gap-2">
                 <button onClick={() => openEditAddr(addr)} className="text-xs text-brand-600 hover:underline">Edit</button>
-                <button onClick={() => deleteAddress(addr.id)} className="text-gray-300 hover:text-red-500 transition-colors">
-                  <Trash2 className="h-4 w-4" />
-                </button>
+                <button onClick={() => deleteAddress(addr.id)} className="text-gray-300 hover:text-red-500 transition-colors"><Trash2 className="h-4 w-4" /></button>
               </div>
             </div>
           ))}
@@ -302,22 +208,17 @@ export default function AccountPage() {
         </div>
       )}
 
-      {/* Address modal */}
-      <Modal isOpen={addrModal} onClose={() => { setAddrModal(false); setEditAddr(null); }}
-        title={editAddr ? 'Edit Address' : 'Add Address'}>
+      <Modal isOpen={addrModal} onClose={() => { setAddrModal(false); setEditAddr(null); }} title={editAddr ? 'Edit Address' : 'Add Address'}>
         <form onSubmit={addrForm.handleSubmit(onSaveAddress)} className="p-6 space-y-4">
           <div className="grid grid-cols-2 gap-3">
             <Input label="Label (e.g. Home)" {...addrForm.register('label')} />
-            <Input label="Full name" {...addrForm.register('full_name', { required: 'Required' })}
-              error={addrForm.formState.errors.full_name?.message} />
+            <Input label="Full name" {...addrForm.register('full_name', { required: 'Required' })} error={addrForm.formState.errors.full_name?.message} />
           </div>
           <Input label="Phone" {...addrForm.register('phone')} />
-          <Input label="Address line 1" {...addrForm.register('address_line1', { required: 'Required' })}
-            error={addrForm.formState.errors.address_line1?.message} />
+          <Input label="Address line 1" {...addrForm.register('address_line1', { required: 'Required' })} error={addrForm.formState.errors.address_line1?.message} />
           <Input label="Address line 2" {...addrForm.register('address_line2')} />
           <div className="grid grid-cols-2 gap-3">
-            <Input label="City" {...addrForm.register('city', { required: 'Required' })}
-              error={addrForm.formState.errors.city?.message} />
+            <Input label="City" {...addrForm.register('city', { required: 'Required' })} error={addrForm.formState.errors.city?.message} />
             <Input label="County" {...addrForm.register('county')} />
           </div>
           <Input label="Postal code" {...addrForm.register('postal_code')} />

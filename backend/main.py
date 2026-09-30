@@ -3,7 +3,6 @@
 # Complete production-grade FastAPI application
 # ============================================================
 
-import os
 import logging
 import secrets
 import hashlib
@@ -11,6 +10,9 @@ import json
 from pathlib import Path
 from datetime import datetime, timedelta, timezone, date
 from decimal import Decimal, ROUND_HALF_UP, InvalidOperation
+import os, shutil
+from fastapi import UploadFile, File
+from fastapi.staticfiles import StaticFiles
 from typing import Optional, List, Any
 
 from dotenv import load_dotenv
@@ -79,6 +81,12 @@ app = FastAPI(
     description="Production backend for CarParts e-commerce marketplace",
     version="2.0.0"
 )
+
+# Serve uploaded files (avatars, settings images, etc.)
+_STATIC_DIR = os.path.join(os.path.dirname(__file__), "static")
+os.makedirs(_STATIC_DIR, exist_ok=True)
+app.mount("/static", StaticFiles(directory=_STATIC_DIR), name="static")
+
 
 app.add_middleware(
     CORSMiddleware,
@@ -633,6 +641,9 @@ class SettingsUpdate(BaseModel):
     bank_branch: Optional[str] = None
     default_deposit_percentage: Optional[int] = None
     default_balance_percentage: Optional[int] = None
+    logo_url: Optional[str] = None
+    favicon_url: Optional[str] = None
+    banner_url: Optional[str] = None
 
 
 # ============================================================
@@ -849,7 +860,7 @@ def me(current_user: dict = Depends(get_current_user)):
         conn = get_db_connection()
         cur = conn.cursor()
         cur.execute(
-            "SELECT id, first_name, last_name, email, phone, role, status, email_verified, created_at FROM users WHERE id = %s",
+            "SELECT id, first_name, last_name, email, phone, role, status, email_verified, created_at, avatar_url FROM users WHERE id = %s",
             (current_user["user_id"],),
         )
         row = cur.fetchone()
@@ -865,7 +876,8 @@ def me(current_user: dict = Depends(get_current_user)):
     return {
         "id": row[0], "first_name": row[1], "last_name": row[2], "email": row[3],
         "phone": row[4], "role": row[5], "status": row[6],
-        "email_verified": row[7], "created_at": safe_json(row[8])
+        "email_verified": row[7], "created_at": safe_json(row[8]),
+        "avatar_url": row[9] if len(row) > 9 else None
     }
 
 
@@ -5558,6 +5570,74 @@ def get_products_for_vehicle(
         if conn:
             conn.close()
 
+
+
+
+# ============================================================
+# USER AVATAR UPLOAD
+# ============================================================
+
+_AVATAR_DIR = os.path.join(os.path.dirname(__file__), "static", "avatars")
+os.makedirs(_AVATAR_DIR, exist_ok=True)
+
+@app.post("/api/users/avatar")
+async def upload_user_avatar(
+    avatar: UploadFile = File(...),
+    current_user: dict = Depends(get_current_user),
+):
+    """Upload or replace the current user's profile picture."""
+    if not avatar.content_type or not avatar.content_type.startswith("image/"):
+        raise HTTPException(status_code=400, detail="File must be an image")
+    ext = os.path.splitext(avatar.filename or "avatar.jpg")[1] or ".jpg"
+    filename = f"user_{current_user['user_id']}{ext}"
+    filepath = os.path.join(_AVATAR_DIR, filename)
+    with open(filepath, "wb") as f:
+        shutil.copyfileobj(avatar.file, f)
+    avatar_url = f"/static/avatars/{filename}"
+    conn = None
+    try:
+        conn = get_db_connection()
+        cur = conn.cursor()
+        cur.execute(
+            "UPDATE users SET avatar_url = %s, updated_at = NOW() WHERE id = %s",
+            (avatar_url, current_user["user_id"]),
+        )
+        conn.commit()
+        cur.close()
+        return {"avatar_url": avatar_url}
+    except Exception:
+        if conn:
+            conn.rollback()
+        raise HTTPException(status_code=500, detail="Avatar save failed")
+    finally:
+        if conn:
+            conn.close()
+
+
+# ============================================================
+# ADMIN SETTINGS IMAGE UPLOAD
+# ============================================================
+
+_SETTINGS_IMG_DIR = os.path.join(os.path.dirname(__file__), "static", "settings")
+os.makedirs(_SETTINGS_IMG_DIR, exist_ok=True)
+
+@app.post("/api/admin/settings/upload-image")
+async def upload_settings_image(
+    file: UploadFile = File(...),
+    current_user: dict = Depends(require_admin),
+):
+    """Upload a branding image (logo, favicon, banner) for the site settings."""
+    if not file.content_type or not file.content_type.startswith("image/"):
+        raise HTTPException(status_code=400, detail="File must be an image")
+    ext = os.path.splitext(file.filename or "image.png")[1] or ".png"
+    # Use the original filename stem so re-uploads replace the same file
+    import uuid as _uuid
+    safe_name = f"{_uuid.uuid4().hex}{ext}"
+    filepath = os.path.join(_SETTINGS_IMG_DIR, safe_name)
+    with open(filepath, "wb") as f:
+        shutil.copyfileobj(file.file, f)
+    url = f"/static/settings/{safe_name}"
+    return {"url": url}
 
 # ============================================================
 # ENHANCED SETTINGS — delivery_fee field
