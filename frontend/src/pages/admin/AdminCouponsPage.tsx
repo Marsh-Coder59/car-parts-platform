@@ -135,14 +135,14 @@ export default function AdminCouponsPage() {
           <div className="grid grid-cols-2 gap-3">
             <Select label="Discount Type" {...register('discount_type')}>
               <option value="PERCENTAGE">Percentage (%)</option>
-              <option value="FIXED">Fixed Amount (KES)</option>
+              <option value="FIXED">Fixed Amount (USD)</option>
             </Select>
             <Input label="Discount Value *" type="number" step="0.01"
               error={errors.discount_value?.message}
               {...register('discount_value', { required: 'Required' })} />
           </div>
           <div className="grid grid-cols-2 gap-3">
-            <Input label="Min Order Amount (KES)" type="number" step="0.01" {...register('min_order_amount')} />
+            <Input label="Min Order Amount (USD)" type="number" step="0.01" {...register('min_order_amount')} />
             <Input label="Max Uses" type="number" {...register('max_uses')} hint="Leave blank for unlimited" />
           </div>
           <Input label="Expiry Date" type="date" {...register('expires_at')} />

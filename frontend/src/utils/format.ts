@@ -1,21 +1,23 @@
 export function formatCurrency(amount: number | undefined | null): string {
-  if (amount === undefined || amount === null) return 'KES 0.00';
-  return `KES ${Number(amount).toLocaleString('en-KE', {
+  if (amount === undefined || amount === null) return '$0.00';
+  return new Intl.NumberFormat('en-US', {
+    style: 'currency',
+    currency: 'USD',
     minimumFractionDigits: 2,
     maximumFractionDigits: 2,
-  })}`;
+  }).format(Number(amount));
 }
 
 export function formatDate(dateStr: string | undefined | null): string {
   if (!dateStr) return '—';
-  return new Date(dateStr).toLocaleDateString('en-KE', {
+  return new Date(dateStr).toLocaleDateString('en-US', {
     year: 'numeric', month: 'short', day: 'numeric',
   });
 }
 
 export function formatDateTime(dateStr: string | undefined | null): string {
   if (!dateStr) return '—';
-  return new Date(dateStr).toLocaleString('en-KE', {
+  return new Date(dateStr).toLocaleString('en-US', {
     year: 'numeric', month: 'short', day: 'numeric',
     hour: '2-digit', minute: '2-digit',
   });

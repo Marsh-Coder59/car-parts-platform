@@ -50,6 +50,8 @@ import AdminRefundsPage from './pages/admin/AdminRefundsPage';
 import AdminCategoriesPage from './pages/admin/AdminCategoriesPage';
 import AdminBrandsPage from './pages/admin/AdminBrandsPage';
 import AdminVehiclesPage from './pages/admin/AdminVehiclesPage';
+import AdminDeliveriesPage from './pages/admin/AdminDeliveriesPage';
+import AdminReviewsPage from './pages/admin/AdminReviewsPage';
 
 export default function App() {
   return (
@@ -83,39 +85,19 @@ export default function App() {
                 <Route path="/verify-email" element={<VerifyEmailPage />} />
 
                 {/* Customer protected */}
-                <Route path="/cart" element={
-                  <CustomerRoute><CartPage /></CustomerRoute>
-                } />
-                <Route path="/checkout" element={
-                  <CustomerRoute><CheckoutPage /></CustomerRoute>
-                } />
-                <Route path="/orders/:id/confirmation" element={
-                  <CustomerRoute><OrderConfirmationPage /></CustomerRoute>
-                } />
-                <Route path="/orders" element={
-                  <CustomerRoute><OrdersPage /></CustomerRoute>
-                } />
-                <Route path="/orders/:id" element={
-                  <CustomerRoute><OrderDetailPage /></CustomerRoute>
-                } />
-                <Route path="/account" element={
-                  <CustomerRoute><AccountPage /></CustomerRoute>
-                } />
-                <Route path="/account/addresses" element={
-                  <CustomerRoute><AccountPage /></CustomerRoute>
-                } />
-                <Route path="/wishlist" element={
-                  <CustomerRoute><WishlistPage /></CustomerRoute>
-                } />
-                <Route path="/notifications" element={
-                  <ProtectedRoute><NotificationsPage /></ProtectedRoute>
-                } />
+                <Route path="/cart" element={<CustomerRoute><CartPage /></CustomerRoute>} />
+                <Route path="/checkout" element={<CustomerRoute><CheckoutPage /></CustomerRoute>} />
+                <Route path="/orders/:id/confirmation" element={<CustomerRoute><OrderConfirmationPage /></CustomerRoute>} />
+                <Route path="/orders" element={<CustomerRoute><OrdersPage /></CustomerRoute>} />
+                <Route path="/orders/:id" element={<CustomerRoute><OrderDetailPage /></CustomerRoute>} />
+                <Route path="/account" element={<CustomerRoute><AccountPage /></CustomerRoute>} />
+                <Route path="/account/addresses" element={<CustomerRoute><AccountPage /></CustomerRoute>} />
+                <Route path="/wishlist" element={<CustomerRoute><WishlistPage /></CustomerRoute>} />
+                <Route path="/notifications" element={<ProtectedRoute><NotificationsPage /></ProtectedRoute>} />
               </Route>
 
               {/* Admin routes under AdminLayout */}
-              <Route path="/admin" element={
-                <AdminRoute><AdminLayout /></AdminRoute>
-              }>
+              <Route path="/admin" element={<AdminRoute><AdminLayout /></AdminRoute>}>
                 <Route index element={<AdminDashboardPage />} />
                 <Route path="orders" element={<AdminOrdersPage />} />
                 <Route path="orders/:id" element={<AdminOrderDetailPage />} />
@@ -130,6 +112,8 @@ export default function App() {
                 <Route path="coupons" element={<AdminCouponsPage />} />
                 <Route path="returns" element={<AdminReturnsPage />} />
                 <Route path="refunds" element={<AdminRefundsPage />} />
+                <Route path="deliveries" element={<AdminDeliveriesPage />} />
+                <Route path="reviews" element={<AdminReviewsPage />} />
                 <Route path="reports" element={<AdminReportsPage />} />
                 <Route path="audit-logs" element={<AdminAuditLogsPage />} />
                 <Route path="settings" element={<AdminSettingsPage />} />

@@ -226,6 +226,21 @@ export const adminService = {
   },
 };
 
+  async getReviews(): Promise<any[]> {
+    const res = await apiClient.get('/api/admin/reviews');
+    return res.data;
+  },
+
+  async deleteReview(id: number) {
+    const res = await apiClient.delete(`/api/admin/reviews/${id}`);
+    return res.data;
+  },
+
+  async getPublicSettings() {
+    const res = await apiClient.get('/api/settings/public');
+    return res.data;
+  },
+
   async uploadSettingsImage(formData: FormData): Promise<{ url: string }> {
     const res = await apiClient.post<{ url: string }>('/api/admin/settings/upload-image', formData, {
       headers: { 'Content-Type': 'multipart/form-data' },

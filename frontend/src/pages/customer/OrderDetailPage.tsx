@@ -243,7 +243,7 @@ export default function OrderDetailPage() {
           <div className="p-3 bg-gray-50 rounded-lg text-sm text-gray-700">
             <p>Amount due: <strong>{formatCurrency(payModal === 'deposit' ? order.deposit_amount : order.balance_amount)}</strong></p>
           </div>
-          <Input label="Amount Paid (KES)" type="number" step="0.01"
+          <Input label="Amount Paid (USD)" type="number" step="0.01"
             error={errors.amount?.message}
             {...register('amount', { required: 'Enter the amount you transferred' })}
           />

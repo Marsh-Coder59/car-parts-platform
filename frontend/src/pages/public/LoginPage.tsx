@@ -20,6 +20,8 @@ export default function LoginPage() {
   const { showLoading, hideLoading } = useLoading();
   const navigate = useNavigate();
   const [searchParams] = useSearchParams();
+  const sessionExpired = searchParams.get('expired') === '1';
+  const [searchParams] = useSearchParams();
   const redirect = searchParams.get('redirect') || '/';
   const expired = searchParams.get('expired');
   const { register, handleSubmit, formState: { errors } } = useForm<FormValues>();
@@ -63,7 +65,13 @@ export default function LoginPage() {
           )}
 
           <form onSubmit={handleSubmit(onSubmit)} className="space-y-4">
-            <Input
+            
+          {sessionExpired && (
+            <div className="mb-4 p-3 rounded-lg bg-amber-50 border border-amber-200 text-sm text-amber-800">
+              ⚠️ Your session expired. Please sign in again — your cart items are still saved.
+            </div>
+          )}
+          <Input
               label="Email address"
               type="email"
               autoComplete="email"

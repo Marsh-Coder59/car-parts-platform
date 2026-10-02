@@ -389,6 +389,7 @@ class ProductCreate(BaseModel):
     sku: Optional[str] = None
     part_number: Optional[str] = None
     description: Optional[str] = None
+    stock_quantity: Optional[int] = 0
     price: Decimal
     compare_at_price: Optional[Decimal] = None
     condition: str = "NEW"
@@ -405,6 +406,7 @@ class ProductUpdate(BaseModel):
     sku: Optional[str] = None
     part_number: Optional[str] = None
     description: Optional[str] = None
+    stock_quantity: Optional[int] = None
     price: Optional[Decimal] = None
     compare_at_price: Optional[Decimal] = None
     condition: Optional[str] = None
@@ -2785,7 +2787,7 @@ def place_order(body: CheckoutRequest, request: Request, current_user: dict = De
         cur.execute(
             """
             INSERT INTO payments (order_id, user_id, type, method, amount, currency, status, created_at)
-            VALUES (%s,%s,'DEPOSIT','BANK_TRANSFER',%s,'KES','PENDING',NOW())
+            VALUES (%s,%s,'DEPOSIT','BANK_TRANSFER',%s,'USD','PENDING',NOW())
             """,
             (order_id, user_id, deposit_amount),
         )
@@ -3201,7 +3203,7 @@ def submit_deposit_payment(
         cur.execute(
             """
             INSERT INTO payments (order_id, user_id, type, method, amount, currency, reference, status, submitted_at, created_at)
-            VALUES (%s,%s,'DEPOSIT','BANK_TRANSFER',%s,'KES',%s,'PENDING',NOW(),NOW())
+            VALUES (%s,%s,'DEPOSIT','BANK_TRANSFER',%s,'USD',%s,'PENDING',NOW(),NOW())
             RETURNING id
             """,
             (order_id, user_id, body.amount, body.reference),
@@ -3266,7 +3268,7 @@ def submit_balance_payment(
         cur.execute(
             """
             INSERT INTO payments (order_id, user_id, type, method, amount, currency, reference, status, submitted_at, created_at)
-            VALUES (%s,%s,'BALANCE','BANK_TRANSFER',%s,'KES',%s,'PENDING',NOW(),NOW())
+            VALUES (%s,%s,'BALANCE','BANK_TRANSFER',%s,'USD',%s,'PENDING',NOW(),NOW())
             RETURNING id
             """,
             (order_id, user_id, body.amount, body.reference),
@@ -4200,7 +4202,7 @@ def get_public_settings():
         conn = get_db_connection()
         cur = conn.cursor()
         cur.execute(
-            "SELECT business_name, business_email, business_phone, whatsapp_number, facebook_url, instagram_url, tiktok_url, x_url FROM site_settings LIMIT 1"
+            "SELECT business_name, business_email, business_phone, whatsapp_number, facebook_url, instagram_url, tiktok_url, x_url, logo_url, favicon_url, banner_url FROM site_settings LIMIT 1"
         )
         row = cur.fetchone()
         cur.close()
@@ -4209,7 +4211,10 @@ def get_public_settings():
         return {
             "business_name": row[0], "business_email": row[1], "business_phone": row[2],
             "whatsapp_number": row[3], "facebook_url": row[4], "instagram_url": row[5],
-            "tiktok_url": row[6], "x_url": row[7]
+            "tiktok_url": row[6], "x_url": row[7],
+            "logo_url": row[8] if len(row) > 8 else None,
+            "favicon_url": row[9] if len(row) > 9 else None,
+            "banner_url": row[10] if len(row) > 10 else None
         }
     except Exception:
         raise HTTPException(status_code=500, detail="Could not fetch settings")
@@ -5638,6 +5643,103 @@ async def upload_settings_image(
         shutil.copyfileobj(file.file, f)
     url = f"/static/settings/{safe_name}"
     return {"url": url}
+
+
+
+# ============================================================
+# ADMIN REVIEWS ENDPOINTS
+# ============================================================
+
+@app.get("/api/admin/reviews")
+def admin_list_reviews(current_user: dict = Depends(require_admin)):
+    conn = None
+    try:
+        conn = get_db_connection()
+        cur = conn.cursor()
+        cur.execute("""
+            SELECT r.id, r.rating, r.title, r.comment, r.created_at,
+                   p.name as product_name,
+                   u.first_name || ' ' || u.last_name as customer_name
+            FROM reviews r
+            LEFT JOIN products p ON r.product_id = p.id
+            LEFT JOIN users u ON r.user_id = u.id
+            ORDER BY r.created_at DESC
+            LIMIT 500
+        """)
+        rows = cur.fetchall()
+        cur.close()
+        return [
+            {
+                "id": row[0], "rating": row[1], "title": row[2],
+                "comment": row[3], "created_at": safe_json(row[4]),
+                "product_name": row[5], "customer_name": row[6],
+            }
+            for row in rows
+        ]
+    finally:
+        if conn: conn.close()
+
+@app.delete("/api/admin/reviews/{review_id}")
+def admin_delete_review(review_id: int, current_user: dict = Depends(require_admin)):
+    conn = None
+    try:
+        conn = get_db_connection()
+        cur = conn.cursor()
+        cur.execute("DELETE FROM reviews WHERE id = %s", (review_id,))
+        conn.commit()
+        cur.close()
+        return {"message": "Review deleted"}
+    except Exception:
+        if conn: conn.rollback()
+        raise HTTPException(status_code=500, detail="Delete failed")
+    finally:
+        if conn: conn.close()
+
+
+# ============================================================
+# PRODUCT IMAGE UPLOAD (replaces URL-only approach)
+# ============================================================
+
+_PRODUCT_IMG_DIR = os.path.join(os.path.dirname(__file__), "static", "products")
+os.makedirs(_PRODUCT_IMG_DIR, exist_ok=True)
+
+@app.post("/api/products/{product_id}/images/upload")
+async def upload_product_image(
+    product_id: int,
+    file: UploadFile = File(...),
+    is_primary: bool = False,
+    current_user: dict = Depends(require_admin),
+):
+    if not file.content_type or not file.content_type.startswith("image/"):
+        raise HTTPException(status_code=400, detail="File must be an image")
+    import uuid as _uuid
+    ext = os.path.splitext(file.filename or "img.jpg")[1] or ".jpg"
+    filename = f"prod_{product_id}_{_uuid.uuid4().hex[:8]}{ext}"
+    filepath = os.path.join(_PRODUCT_IMG_DIR, filename)
+    with open(filepath, "wb") as f:
+        shutil.copyfileobj(file.file, f)
+    image_url = f"/static/products/{filename}"
+    conn = None
+    try:
+        conn = get_db_connection()
+        cur = conn.cursor()
+        if is_primary:
+            cur.execute("UPDATE product_images SET is_primary = FALSE WHERE product_id = %s", (product_id,))
+        cur.execute(
+            """INSERT INTO product_images (product_id, image_url, is_primary, sort_order, created_at)
+               VALUES (%s, %s, %s, COALESCE((SELECT MAX(sort_order)+1 FROM product_images WHERE product_id=%s), 0), NOW())
+               RETURNING id, image_url, is_primary""",
+            (product_id, image_url, is_primary, product_id),
+        )
+        row = cur.fetchone()
+        conn.commit()
+        cur.close()
+        return {"id": row[0], "image_url": row[1], "is_primary": row[2]}
+    except Exception as e:
+        if conn: conn.rollback()
+        raise HTTPException(status_code=500, detail=f"Image save failed: {e}")
+    finally:
+        if conn: conn.close()
 
 # ============================================================
 # ENHANCED SETTINGS — delivery_fee field

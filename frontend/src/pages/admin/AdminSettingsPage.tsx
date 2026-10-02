@@ -234,8 +234,8 @@ export default function AdminSettingsPage() {
           <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
             <Input label="Deposit Percentage" type="number" {...register('default_deposit_percentage')} hint="Default: 75" />
             <Input label="Balance Percentage" type="number" {...register('default_balance_percentage')} hint="Default: 25" />
-            <Input label="Delivery Fee (KES)" type="number" step="0.01" {...register('default_delivery_fee')} />
-            <Input label="Free Delivery Threshold (KES)" type="number" step="0.01" {...register('free_delivery_threshold')} hint="Leave blank to disable" />
+            <Input label="Delivery Fee (USD)" type="number" step="0.01" {...register('default_delivery_fee')} />
+            <Input label="Free Delivery Threshold (USD)" type="number" step="0.01" {...register('free_delivery_threshold')} hint="Leave blank to disable" />
           </div>
         </div>
 

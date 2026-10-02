@@ -141,9 +141,9 @@ export default function ProductsPage() {
               <option value="USED">Used</option>
               <option value="REFURBISHED">Refurbished</option>
             </Select>
-            <Input label="Min Price (KES)" type="number" value={minPrice}
+            <Input label="Min Price (USD)" type="number" value={minPrice}
               onChange={e => updateParam('min_price', e.target.value)} placeholder="0" />
-            <Input label="Max Price (KES)" type="number" value={maxPrice}
+            <Input label="Max Price (USD)" type="number" value={maxPrice}
               onChange={e => updateParam('max_price', e.target.value)} placeholder="Any" />
           </div>
         </div>

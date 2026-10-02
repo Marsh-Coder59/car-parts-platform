@@ -144,7 +144,7 @@ export default function AdminRefundsPage() {
           <Input label="Order ID *" type="number"
             error={createForm.formState.errors.order_id?.message}
             {...createForm.register('order_id', { required: 'Required' })} />
-          <Input label="Refund Amount (KES) *" type="number" step="0.01"
+          <Input label="Refund Amount (USD) *" type="number" step="0.01"
             error={createForm.formState.errors.amount?.message}
             {...createForm.register('amount', { required: 'Required' })} />
           <Textarea label="Reason *" rows={2}

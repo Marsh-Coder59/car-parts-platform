@@ -144,7 +144,7 @@ export default function CheckoutPage() {
                   <CheckCircle className="h-4 w-4" />
                   {couponValid.discount_type === 'PERCENTAGE'
                     ? `${couponValid.discount_value}% off applied`
-                    : `KES ${couponValid.discount_value} off applied`}
+                    : `USD ${couponValid.discount_value} off applied`}
                 </div>
               )}
             </div>
