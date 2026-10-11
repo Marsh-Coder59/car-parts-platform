@@ -47,6 +47,24 @@ export const productsService = {
     return res.data;
   },
 
+  // Upload an image file — saves to backend static folder, inserts into product_images
+  async uploadImage(
+    productId: number,
+    file: File,
+    isPrimary = false,
+  ): Promise<{ id: number; image_url: string; is_primary: boolean }> {
+    const fd = new FormData();
+    fd.append('file', file);
+    fd.append('is_primary', isPrimary ? 'true' : 'false');
+    const res = await apiClient.post<{ id: number; image_url: string; is_primary: boolean }>(
+      `/api/products/${productId}/images/upload`,
+      fd,
+      { headers: { 'Content-Type': 'multipart/form-data' } }
+    );
+    return res.data;
+  },
+
+  // Legacy: add image by URL
   async addImage(productId: number, data: {
     image_url: string;
     alt_text?: string;

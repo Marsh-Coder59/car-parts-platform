@@ -54,7 +54,7 @@ export interface ProductListItem {
   primary_image?: string;
 }
 
-export interface ProductDetail extends ProductListItem {
+export interface ProductDetail extends Omit<ProductListItem, 'category' | 'brand'> {
   description?: string;
   weight?: number;
   updated_at: string;

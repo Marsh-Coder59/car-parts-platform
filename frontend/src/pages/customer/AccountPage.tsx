@@ -10,6 +10,7 @@ import Button from '../../components/ui/Button';
 import Modal from '../../components/ui/Modal';
 import { getErrorMessage } from '../../services/api';
 import type { Address } from '../../types';
+import { resolveImageUrl, onImageError } from '../../utils/image';
 import toast from 'react-hot-toast';
 
 type Tab = 'profile' | 'password' | 'addresses';
@@ -133,7 +134,7 @@ export default function AccountPage() {
             <div className="relative group">
               <div className="w-24 h-24 rounded-full overflow-hidden bg-brand-100 flex items-center justify-center ring-4 ring-white shadow-md">
                 {avatarPreview
-                  ? <img src={avatarPreview} alt="Profile" className="w-full h-full object-cover" />
+                  ? <img src={resolveImageUrl(avatarPreview)} alt="Profile" onError={onImageError} className="w-full h-full object-cover" />
                   : <span className="text-2xl font-bold text-brand-600">{initials}</span>}
               </div>
               <button type="button" onClick={() => fileInputRef.current?.click()}

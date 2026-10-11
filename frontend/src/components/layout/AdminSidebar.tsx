@@ -4,7 +4,7 @@ import {
   LayoutDashboard, Package, Tags, Award, Car, Boxes, ShoppingCart,
   ClipboardList, CreditCard, Truck, Star, Ticket, RotateCcw, RefreshCw,
   Users, UserCog, Settings, ScrollText, BarChart2, X, Menu, LogOut,
-  ChevronDown, ChevronRight, Bell
+  ChevronDown, ChevronRight, Home
 } from 'lucide-react';
 import Logo from '../shared/Logo';
 import { useAuth } from '../../context/AuthContext';
@@ -45,7 +45,7 @@ const navItems: NavItem[] = [
   { to: '/admin/settings', icon: <Settings className="h-4 w-4" />, label: 'Settings', adminOnly: true },
 ];
 
-function NavLink({ item, collapsed }: { item: NavItem; collapsed: boolean }) {
+function NavLink({ item, collapsed, onNavigate }: { item: NavItem; collapsed: boolean; onNavigate?: () => void }) {
   const location = useLocation();
   const [open, setOpen] = useState(false);
   const isActive = item.to && location.pathname === item.to;
@@ -73,7 +73,7 @@ function NavLink({ item, collapsed }: { item: NavItem; collapsed: boolean }) {
         {!collapsed && open && (
           <div className="ml-4 mt-1 space-y-0.5 border-l-2 border-gray-100 pl-3">
             {item.children.map(child => (
-              <NavLink key={child.to} item={child} collapsed={collapsed} />
+              <NavLink key={child.to} item={child} collapsed={collapsed} onNavigate={onNavigate} />
             ))}
           </div>
         )}
@@ -84,6 +84,7 @@ function NavLink({ item, collapsed }: { item: NavItem; collapsed: boolean }) {
   return (
     <Link
       to={item.to!}
+      onClick={onNavigate}
       className={`flex items-center gap-3 px-3 py-2 rounded-lg text-sm font-medium transition-colors
         ${isActive ? 'text-brand-600 bg-brand-50 font-semibold' : 'text-gray-600 hover:text-gray-900 hover:bg-gray-50'}`}
     >
@@ -93,9 +94,13 @@ function NavLink({ item, collapsed }: { item: NavItem; collapsed: boolean }) {
   );
 }
 
-export default function AdminSidebar() {
+interface AdminSidebarProps {
+  mobileOpen: boolean;
+  onMobileClose: () => void;
+}
+
+export default function AdminSidebar({ mobileOpen, onMobileClose }: AdminSidebarProps) {
   const [collapsed, setCollapsed] = useState(false);
-  const [mobileOpen, setMobileOpen] = useState(false);
   const { logout, user } = useAuth();
   const { showLoading, hideLoading } = useLoading();
 
@@ -123,10 +128,24 @@ export default function AdminSidebar() {
         </button>
       </div>
 
+      {/* Home — returns to the public storefront without signing out.
+          A plain client-side Link: the session lives in an httpOnly cookie,
+          so navigating to "/" never touches auth state or hits /login. */}
+      <div className="p-3 pb-0">
+        <Link
+          to="/"
+          onClick={onMobileClose}
+          className="flex items-center gap-3 px-3 py-2 rounded-lg text-sm font-medium text-gray-600 hover:text-brand-600 hover:bg-brand-50 border border-gray-100 transition-colors"
+        >
+          <Home className="h-4 w-4 flex-shrink-0" />
+          {!collapsed && <span>Back to Storefront</span>}
+        </Link>
+      </div>
+
       {/* Nav */}
       <nav className="flex-1 overflow-y-auto p-3 space-y-0.5">
         {navItems.map((item, i) => (
-          <NavLink key={i} item={item} collapsed={collapsed} />
+          <NavLink key={i} item={item} collapsed={collapsed} onNavigate={onMobileClose} />
         ))}
       </nav>
 
@@ -152,25 +171,17 @@ export default function AdminSidebar() {
   return (
     <>
       {/* Desktop sidebar */}
-      <aside className={`hidden lg:flex flex-col bg-white border-r border-gray-100 transition-all duration-300 ${collapsed ? 'w-16' : 'w-60'} min-h-screen flex-shrink-0`}>
+      <aside className={`hidden lg:flex flex-col bg-white border-r border-gray-100 transition-all duration-300 ${collapsed ? 'w-16' : 'w-60'} min-h-screen flex-shrink-0 sticky top-0`}>
         <SidebarContent />
       </aside>
 
-      {/* Mobile toggle */}
-      <button
-        onClick={() => setMobileOpen(true)}
-        className="lg:hidden fixed top-4 left-4 z-50 p-2 bg-white rounded-xl shadow-lg border border-gray-100"
-      >
-        <Menu className="h-5 w-5 text-gray-700" />
-      </button>
-
-      {/* Mobile drawer */}
+      {/* Mobile drawer — opened via the menu button in AdminHeader */}
       {mobileOpen && (
         <div className="lg:hidden fixed inset-0 z-50 flex">
-          <div className="absolute inset-0 bg-black/40" onClick={() => setMobileOpen(false)} />
+          <div className="absolute inset-0 bg-black/40" onClick={onMobileClose} />
           <aside className="relative w-64 bg-white h-full shadow-2xl">
             <button
-              onClick={() => setMobileOpen(false)}
+              onClick={onMobileClose}
               className="absolute top-4 right-4 p-1.5 hover:bg-gray-100 rounded-lg text-gray-400"
             >
               <X className="h-5 w-5" />

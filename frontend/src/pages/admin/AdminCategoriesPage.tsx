@@ -9,6 +9,7 @@ import Button from '../../components/ui/Button';
 import { Input, Textarea } from '../../components/ui/Input';
 import { getErrorMessage, apiClient } from '../../services/api';
 import type { Category } from '../../types';
+import { resolveImageUrl, onImageError } from '../../utils/image';
 import toast from 'react-hot-toast';
 
 interface FormValues { name: string; slug: string; description: string; is_active: boolean; }
@@ -111,7 +112,7 @@ export default function AdminCategoriesPage() {
                   <td className="px-4 py-3">
                     <div className="flex items-center gap-3">
                       {c.image_url
-                        ? <img src={c.image_url} alt="" className="w-8 h-8 rounded object-cover" />
+                        ? <img src={resolveImageUrl(c.image_url)} alt="" onError={onImageError} className="w-8 h-8 rounded object-cover" />
                         : <div className="w-8 h-8 rounded bg-gray-100 flex items-center justify-center text-xs font-bold text-gray-400">{c.name[0]}</div>}
                       <span className="font-medium text-gray-900">{c.name}</span>
                     </div>

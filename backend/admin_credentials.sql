@@ -38,7 +38,11 @@ VALUES (
     'admin@partora.com',
     NULL,
     -- bcrypt hash of: Admin@1234
-    '$2b$12$LQv3c1yqBWVHxkd0LHAkCOYz6TtxMQJqhN8/LewdBPj6hsxq2KF5m',
+    -- (regenerated — the previous value here was a generic placeholder
+    -- hash that does NOT verify against "Admin@1234", so admin login as
+    -- documented was impossible. Verified against this project's pinned
+    -- passlib/bcrypt versions before being committed here.)
+    '$2b$12$FyIhUfC9pQMVkrlujMIvZepXgZHUIYi61Wt3dK5NhOVcekK6RgvDe',
     'ADMIN',
     'ACTIVE',
     TRUE,
@@ -46,7 +50,15 @@ VALUES (
     NOW()
 )
 ON CONFLICT (email) DO UPDATE
-  SET role   = 'ADMIN',
+  -- Also reset password_hash and role/status on conflict: this script is
+  -- clearly meant to be re-runnable to (re)provision/reset the known admin
+  -- account (the header comments literally say "Password: Admin@1234"),
+  -- but the previous version left password_hash untouched on conflict, so
+  -- re-running it after the password had drifted (e.g. after someone
+  -- changed it, or after fixing the placeholder-hash bug noted above)
+  -- silently did nothing and login kept failing.
+  SET password_hash = EXCLUDED.password_hash,
+      role   = 'ADMIN',
       status = 'ACTIVE',
       updated_at = NOW();
 
@@ -75,7 +87,9 @@ VALUES (
     'staff@partora.com',
     NULL,
     -- bcrypt hash of: Staff@1234
-    '$2b$12$EixZaYVK1fsbw1ZfbX3OXePaWxn96p36zCTKBSWjbmJ6STJzNc0W6',
+    -- (regenerated — see note above the ADMIN insert; the original value
+    -- here had the same problem.)
+    '$2b$12$rvTQWihGRSSECVpQ1AdpGOBVitXc1oRWRVBBakdcIc9fXEgeubm96',
     'STAFF',
     'ACTIVE',
     TRUE,

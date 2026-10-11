@@ -1,3 +1,4 @@
+
 import { useState } from 'react';
 import { Link, useNavigate, useSearchParams } from 'react-router-dom';
 import { Mail, Lock } from 'lucide-react';
@@ -19,17 +20,25 @@ export default function LoginPage() {
   const { login } = useAuth();
   const { showLoading, hideLoading } = useLoading();
   const navigate = useNavigate();
+
   const [searchParams] = useSearchParams();
+
   const sessionExpired = searchParams.get('expired') === '1';
-  const [searchParams] = useSearchParams();
   const redirect = searchParams.get('redirect') || '/';
   const expired = searchParams.get('expired');
-  const { register, handleSubmit, formState: { errors } } = useForm<FormValues>();
+
+  const {
+    register,
+    handleSubmit,
+    formState: { errors },
+  } = useForm<FormValues>();
+
   const [error, setError] = useState('');
 
   const onSubmit = async (data: FormValues) => {
     setError('');
     showLoading('Signing in…');
+
     try {
       await login(data.email, data.password);
       navigate(redirect, { replace: true });
@@ -47,8 +56,14 @@ export default function LoginPage() {
           <div className="flex justify-center mb-4">
             <Logo size="lg" />
           </div>
-          <h1 className="text-2xl font-bold text-gray-900">Welcome back</h1>
-          <p className="text-sm text-gray-500 mt-1">Sign in to your Partora account</p>
+
+          <h1 className="text-2xl font-bold text-gray-900">
+            Welcome back
+          </h1>
+
+          <p className="text-sm text-gray-500 mt-1">
+            Sign in to your Partora account
+          </p>
         </div>
 
         <div className="bg-white rounded-2xl shadow-sm border border-gray-100 p-8">
@@ -65,13 +80,14 @@ export default function LoginPage() {
           )}
 
           <form onSubmit={handleSubmit(onSubmit)} className="space-y-4">
-            
-          {sessionExpired && (
-            <div className="mb-4 p-3 rounded-lg bg-amber-50 border border-amber-200 text-sm text-amber-800">
-              ⚠️ Your session expired. Please sign in again — your cart items are still saved.
-            </div>
-          )}
-          <Input
+            {sessionExpired && (
+              <div className="mb-4 p-3 rounded-lg bg-amber-50 border border-amber-200 text-sm text-amber-800">
+                ⚠️ Your session expired. Please sign in again — your cart items
+                are still saved.
+              </div>
+            )}
+
+            <Input
               label="Email address"
               type="email"
               autoComplete="email"
@@ -79,20 +95,29 @@ export default function LoginPage() {
               error={errors.email?.message}
               {...register('email', {
                 required: 'Email is required',
-                pattern: { value: /\S+@\S+\.\S+/, message: 'Invalid email' },
+                pattern: {
+                  value: /\S+@\S+\.\S+/,
+                  message: 'Invalid email',
+                },
               })}
             />
+
             <Input
               label="Password"
               type="password"
               autoComplete="current-password"
               leftIcon={<Lock className="h-4 w-4" />}
               error={errors.password?.message}
-              {...register('password', { required: 'Password is required' })}
+              {...register('password', {
+                required: 'Password is required',
+              })}
             />
 
             <div className="flex items-center justify-end">
-              <Link to="/forgot-password" className="text-sm text-brand-600 hover:text-brand-700 font-medium">
+              <Link
+                to="/forgot-password"
+                className="text-sm text-brand-600 hover:text-brand-700 font-medium"
+              >
                 Forgot password?
               </Link>
             </div>
@@ -104,7 +129,10 @@ export default function LoginPage() {
 
           <p className="text-center text-sm text-gray-500 mt-6">
             Don't have an account?{' '}
-            <Link to="/register" className="text-brand-600 hover:text-brand-700 font-semibold">
+            <Link
+              to="/register"
+              className="text-brand-600 hover:text-brand-700 font-semibold"
+            >
               Sign up
             </Link>
           </p>
@@ -113,3 +141,4 @@ export default function LoginPage() {
     </div>
   );
 }
+

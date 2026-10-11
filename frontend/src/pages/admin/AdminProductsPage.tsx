@@ -12,6 +12,7 @@ import Pagination from '../../components/ui/Pagination';
 import Modal from '../../components/ui/Modal';
 import AdminProductForm from './AdminProductForm';
 import type { ProductListItem } from '../../types';
+import { resolveImageUrl, onImageError } from '../../utils/image';
 import toast from 'react-hot-toast';
 import { getErrorMessage } from '../../services/api';
 
@@ -98,7 +99,7 @@ export default function AdminProductsPage() {
                       <td className="px-4 py-3">
                         <div className="flex items-center gap-3">
                           {p.primary_image ? (
-                            <img src={p.primary_image} alt="" className="w-10 h-10 rounded-lg object-cover flex-shrink-0" />
+                            <img src={resolveImageUrl(p.primary_image)} alt="" onError={onImageError} className="w-10 h-10 rounded-lg object-cover flex-shrink-0" />
                           ) : (
                             <div className="w-10 h-10 rounded-lg bg-gray-100 flex-shrink-0" />
                           )}

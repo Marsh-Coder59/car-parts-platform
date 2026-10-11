@@ -4,6 +4,7 @@
  */
 import { useEffect, useState } from 'react';
 import { adminService } from '../../services/admin.service';
+import { resolveImageUrl, onImageError } from '../../utils/image';
 
 interface LogoProps {
   size?: 'sm' | 'md' | 'lg';
@@ -33,8 +34,8 @@ export default function Logo({ size = 'md', variant = 'full', className = '' }: 
       return;
     }
     adminService.getPublicSettings().then((s: any) => {
-      _cachedLogoUrl = s.logo_url ?? null;
-      _cachedFaviconUrl = s.favicon_url ?? null;
+      _cachedLogoUrl = resolveImageUrl(s.logo_url) ?? null;
+      _cachedFaviconUrl = resolveImageUrl(s.favicon_url) ?? null;
       setLogoUrl(_cachedLogoUrl);
       if (_cachedFaviconUrl) updateFavicon(_cachedFaviconUrl);
     }).catch(() => {
@@ -45,7 +46,7 @@ export default function Logo({ size = 'md', variant = 'full', className = '' }: 
   return (
     <div className={`flex items-center gap-2.5 select-none ${className}`}>
       {logoUrl ? (
-        <img src={logoUrl} alt="Logo" height={img} style={{ height: img, width: 'auto', maxWidth: img * 3 }} className="object-contain" />
+        <img src={logoUrl} alt="Logo" height={img} onError={onImageError} style={{ height: img, width: 'auto', maxWidth: img * 3 }} className="object-contain" />
       ) : (
         <div
           className="flex items-center justify-center rounded-xl bg-brand-500 text-white font-bold flex-shrink-0"

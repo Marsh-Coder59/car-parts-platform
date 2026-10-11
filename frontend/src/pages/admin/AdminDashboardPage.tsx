@@ -1,11 +1,34 @@
 import { useEffect, useState } from 'react';
 import { Link } from 'react-router-dom';
-import { ShoppingBag, DollarSign, Clock, Truck, Users, AlertTriangle } from 'lucide-react';
+import {
+  ShoppingBag, DollarSign, Clock, Truck, Users, AlertTriangle,
+  Plus, ClipboardList, Boxes, TrendingUp,
+} from 'lucide-react';
 import { adminService } from '../../services/admin.service';
 import { formatCurrency, formatDate } from '../../utils/format';
 import { OrderStatusBadge } from '../../components/ui/Badge';
 import { Skeleton } from '../../components/ui/Skeleton';
 import type { DashboardData } from '../../types';
+
+interface TopProduct {
+  product_id: number;
+  product_name: string;
+  sku: string;
+  total_quantity: number;
+  total_revenue: number;
+}
+
+function QuickAction({ to, icon, label }: { to: string; icon: React.ReactNode; label: string }) {
+  return (
+    <Link
+      to={to}
+      className="flex items-center gap-2.5 px-4 py-3 bg-white rounded-xl border border-gray-100 hover:border-brand-200 hover:bg-brand-50/50 transition-colors text-sm font-semibold text-gray-700 hover:text-brand-700"
+    >
+      <span className="p-1.5 bg-brand-50 rounded-lg text-brand-600">{icon}</span>
+      {label}
+    </Link>
+  );
+}
 
 function StatCard({ icon, label, value, sub, color }: { icon: React.ReactNode; label: string; value: string | number; sub?: string; color?: string }) {
   return (
@@ -25,9 +48,15 @@ function StatCard({ icon, label, value, sub, color }: { icon: React.ReactNode; l
 export default function AdminDashboardPage() {
   const [data, setData] = useState<DashboardData | null>(null);
   const [loading, setLoading] = useState(true);
+  const [loadError, setLoadError] = useState(false);
+  const [topProducts, setTopProducts] = useState<TopProduct[] | null>(null);
 
   useEffect(() => {
-    adminService.getDashboard().then(setData).finally(() => setLoading(false));
+    adminService.getDashboard()
+      .then(setData)
+      .catch(() => setLoadError(true))
+      .finally(() => setLoading(false));
+    adminService.getTopProducts(5).then(setTopProducts).catch(() => setTopProducts([]));
   }, []);
 
   if (loading) return (
@@ -38,7 +67,13 @@ export default function AdminDashboardPage() {
     </div>
   );
 
-  if (!data) return <div className="text-gray-500 text-sm">Could not load dashboard.</div>;
+  if (loadError || !data) return (
+    <div className="bg-white rounded-xl border border-gray-100 p-8 text-center">
+      <AlertTriangle className="h-8 w-8 text-gray-300 mx-auto mb-3" />
+      <p className="text-sm font-semibold text-gray-900">Could not load the dashboard</p>
+      <p className="text-xs text-gray-500 mt-1">Check your connection and try refreshing the page.</p>
+    </div>
+  );
 
   return (
     <div>
@@ -47,6 +82,13 @@ export default function AdminDashboardPage() {
           <h1 className="text-2xl font-extrabold text-gray-900">Dashboard</h1>
           <p className="text-sm text-gray-500 mt-0.5">Overview of your store</p>
         </div>
+      </div>
+
+      {/* Quick actions */}
+      <div className="grid grid-cols-2 sm:grid-cols-3 gap-3 mb-6">
+        <QuickAction to="/admin/products" icon={<Plus className="h-4 w-4" />} label="Add Product" />
+        <QuickAction to="/admin/orders" icon={<ClipboardList className="h-4 w-4" />} label="View Orders" />
+        <QuickAction to="/admin/inventory" icon={<Boxes className="h-4 w-4" />} label="Manage Inventory" />
       </div>
 
       {/* Stats */}
@@ -59,7 +101,38 @@ export default function AdminDashboardPage() {
         <StatCard icon={<AlertTriangle className="h-5 w-5" />} label="Low Stock" value={data.low_stock_products.length} color={data.low_stock_products.length > 0 ? 'text-red-600' : 'text-gray-900'} />
       </div>
 
-      <div className="grid lg:grid-cols-2 gap-6">
+      <div className="grid lg:grid-cols-3 gap-6 mb-6">
+        {/* Top-selling products */}
+        <div className="bg-white rounded-xl border border-gray-100 p-5 lg:col-span-1">
+          <div className="flex items-center justify-between mb-4">
+            <h2 className="text-sm font-bold text-gray-900 flex items-center gap-1.5">
+              <TrendingUp className="h-4 w-4 text-brand-500" /> Top Selling Products
+            </h2>
+          </div>
+          {topProducts === null ? (
+            <div className="space-y-2">
+              {Array.from({ length: 4 }).map((_, i) => <Skeleton key={i} className="h-10 rounded-lg" />)}
+            </div>
+          ) : topProducts.length === 0 ? (
+            <p className="text-sm text-gray-400 py-4 text-center">No sales yet</p>
+          ) : (
+            <div className="space-y-2">
+              {topProducts.map((p, i) => (
+                <div key={p.product_id} className="flex items-center justify-between py-2 border-b border-gray-50 last:border-0">
+                  <div className="flex items-center gap-2.5 min-w-0">
+                    <span className="text-xs font-bold text-gray-300 w-4 flex-shrink-0">{i + 1}</span>
+                    <div className="min-w-0">
+                      <p className="text-xs font-semibold text-gray-900 truncate">{p.product_name}</p>
+                      <p className="text-xs text-gray-400">{p.total_quantity} sold</p>
+                    </div>
+                  </div>
+                  <p className="text-xs font-semibold text-gray-900 flex-shrink-0">{formatCurrency(p.total_revenue)}</p>
+                </div>
+              ))}
+            </div>
+          )}
+        </div>
+
         {/* Recent orders */}
         <div className="bg-white rounded-xl border border-gray-100 p-5">
           <div className="flex items-center justify-between mb-4">

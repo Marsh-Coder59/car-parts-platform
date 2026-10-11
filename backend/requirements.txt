@@ -2,7 +2,22 @@ fastapi>=0.111.0
 uvicorn[standard]>=0.29.0
 pydantic[email]>=2.7.0
 passlib[bcrypt]>=1.7.4
-bcrypt>=4.1.3
+# Pinned (not a floor) — passlib 1.7.4 reads bcrypt's internal
+# `__about__.__version__` to detect the backend version. bcrypt removed
+# that attribute in 4.1+, and bcrypt 5.x additionally changed behavior in
+# a way that makes passlib's own self-test throw
+# "password cannot be longer than 72 bytes" on EVERY login attempt
+# (passlib hashes a 72-byte dummy string on every login, successful or
+# not, to prevent timing attacks — so this breaks 100% of logins, not
+# just long passwords). bcrypt==4.0.1 is the version already installed
+# and working in this project's real venv; requirements.txt previously
+# said ">=4.1.3", which is actually incompatible and would break every
+# login the moment someone ran a fresh `pip install -r requirements.txt`
+# (new machine, CI, redeploy). Keep this pinned until passlib ships a fix
+# (passlib 1.7.4 is its last release as of this writing) or the project
+# switches off passlib to the `bcrypt` package's own hash/checkpw API.
+bcrypt==4.0.1
 python-jose[cryptography]>=3.3.0
 python-dotenv>=1.0.0
 psycopg2-binary>=2.9.9
+python-multipart>=0.0.9

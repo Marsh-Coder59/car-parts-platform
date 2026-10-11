@@ -9,6 +9,7 @@ import Button from '../../components/ui/Button';
 import { Input, Textarea } from '../../components/ui/Input';
 import { getErrorMessage, apiClient } from '../../services/api';
 import type { Brand } from '../../types';
+import { resolveImageUrl, onImageError } from '../../utils/image';
 import toast from 'react-hot-toast';
 
 interface FormValues { name: string; slug: string; description: string; is_active: boolean; }
@@ -111,7 +112,7 @@ export default function AdminBrandsPage() {
                   <td className="px-4 py-3">
                     <div className="flex items-center gap-3">
                       {b.logo_url
-                        ? <img src={b.logo_url} alt="" className="w-8 h-8 rounded object-contain bg-gray-50" />
+                        ? <img src={resolveImageUrl(b.logo_url)} alt="" onError={onImageError} className="w-8 h-8 rounded object-contain bg-gray-50" />
                         : <div className="w-8 h-8 rounded bg-gray-100 flex items-center justify-center text-xs font-bold text-gray-400">{b.name[0]}</div>}
                       <span className="font-medium text-gray-900">{b.name}</span>
                     </div>

@@ -8,6 +8,7 @@ import { getErrorMessage } from '../../services/api';
 import type { AdminSettings } from '../../types';
 import toast from 'react-hot-toast';
 import { apiClient } from '../../services/api';
+import { resolveImageUrl, onImageError } from '../../utils/image';
 
 // ── image upload helper ──────────────────────────────────────────────────────
 interface ImageUploadFieldProps {
@@ -71,7 +72,7 @@ function ImageUploadField({ label, currentUrl, onUploaded, onRemove, hint }: Ima
         {/* Preview box */}
         <div className="w-20 h-20 rounded-lg border border-gray-200 bg-gray-50 flex items-center justify-center overflow-hidden flex-shrink-0">
           {preview
-            ? <img src={preview} alt={label} className="w-full h-full object-contain" />
+            ? <img src={resolveImageUrl(preview)} alt={label} onError={onImageError} className="w-full h-full object-contain" />
             : <ImageIcon className="h-8 w-8 text-gray-300" />}
         </div>
 
@@ -103,7 +104,7 @@ function ImageUploadField({ label, currentUrl, onUploaded, onRemove, hint }: Ima
 }
 
 // ── main page ────────────────────────────────────────────────────────────────
-type FormValues = AdminSettings & { default_delivery_fee: string };
+type FormValues = Omit<AdminSettings, 'default_delivery_fee'> & { default_delivery_fee: string };
 
 export default function AdminSettingsPage() {
   const [loading, setLoading] = useState(true);

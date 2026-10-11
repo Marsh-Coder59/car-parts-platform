@@ -82,19 +82,20 @@ app = FastAPI(
     version="2.0.0"
 )
 
-# Serve uploaded files (avatars, settings images, etc.)
-_STATIC_DIR = os.path.join(os.path.dirname(__file__), "static")
-os.makedirs(_STATIC_DIR, exist_ok=True)
-app.mount("/static", StaticFiles(directory=_STATIC_DIR), name="static")
 
 
 app.add_middleware(
     CORSMiddleware,
-    allow_origins=os.getenv("ALLOWED_ORIGINS", "http://localhost:3000").split(","),
+    allow_origins=os.getenv("ALLOWED_ORIGINS", "http://localhost:3000,http://localhost:5173,http://localhost:5174").split(","),
     allow_credentials=True,
     allow_methods=["*"],
     allow_headers=["*"],
 )
+
+# Serve uploaded static files (avatars, product images, settings images)
+_STATIC_DIR = os.path.join(os.path.dirname(__file__), "static")
+os.makedirs(_STATIC_DIR, exist_ok=True)
+app.mount("/static", StaticFiles(directory=_STATIC_DIR), name="static")
 
 
 # ============================================================
@@ -1798,8 +1799,24 @@ def create_product(body: ProductCreate, request: Request, current_user: dict = D
              body.weight, body.is_featured),
         )
         new_id = cur.fetchone()[0]
+
+        # Always create an inventory record for the new product
+        stock_qty = body.stock_quantity if body.stock_quantity is not None else 0
+        cur.execute(
+            """INSERT INTO inventory (product_id, quantity, reserved_quantity, reorder_level, updated_at)
+               VALUES (%s, %s, 0, 5, NOW())
+               ON CONFLICT (product_id) DO UPDATE SET quantity = %s, updated_at = NOW()""",
+            (new_id, stock_qty, stock_qty),
+        )
+        if stock_qty > 0:
+            cur.execute(
+                """INSERT INTO inventory_transactions (product_id, type, quantity, notes, created_by, created_at)
+                   VALUES (%s, 'STOCK_IN', %s, 'Initial stock on product creation', %s, NOW())""",
+                (new_id, stock_qty, current_user["user_id"]),
+            )
+
         write_audit_log(cur, current_user["user_id"], "PRODUCT_CREATED", "products", new_id,
-                        new_values={"name": body.name, "sku": body.sku, "price": str(body.price)},
+                        new_values={"name": body.name, "sku": body.sku, "price": str(body.price), "stock_quantity": stock_qty},
                         ip_address=request.client.host if request.client else None)
         conn.commit()
         cur.close()
@@ -1852,6 +1869,20 @@ def update_product(product_id: int, body: ProductUpdate, request: Request, curre
         )
         if not cur.fetchone():
             raise HTTPException(status_code=404, detail="Product not found")
+
+        # Update inventory quantity if provided
+        if body.stock_quantity is not None:
+            cur.execute(
+                """INSERT INTO inventory (product_id, quantity, reserved_quantity, reorder_level, updated_at)
+                   VALUES (%s, %s, 0, 5, NOW())
+                   ON CONFLICT (product_id) DO UPDATE SET quantity = %s, updated_at = NOW()""",
+                (product_id, body.stock_quantity, body.stock_quantity),
+            )
+            cur.execute(
+                """INSERT INTO inventory_transactions (product_id, type, quantity, notes, created_by, created_at)
+                   VALUES (%s, 'ADJUSTMENT', %s, 'Stock updated via admin product edit', %s, NOW())""",
+                (product_id, body.stock_quantity, current_user["user_id"]),
+            )
 
         write_audit_log(cur, current_user["user_id"], "PRODUCT_UPDATED", "products", product_id,
                         old_values={"name": old[0], "sku": old[1], "price": str(old[2]), "status": old[3]},
@@ -2674,22 +2705,61 @@ def place_order(body: CheckoutRequest, request: Request, current_user: dict = De
                 raise HTTPException(status_code=400, detail="Coupon has expired")
             coupon_id = coupon[0]
 
-        # Lock and validate all inventory rows in one query
-        product_ids = [c[0] for c in cart_items]
+        # Lock and validate all product + inventory rows.
+        #
+        # NOTE: the previous implementation used a single query with
+        #   LEFT JOIN inventory i ON i.product_id = p.id ... FOR UPDATE OF i
+        # which PostgreSQL rejects with:
+        #   psycopg2.errors.FeatureNotSupported: FOR UPDATE cannot be applied
+        #   to the nullable side of an outer join
+        # because a product with no matching inventory row has NULL on the
+        # inventory side, and Postgres cannot lock a row that doesn't exist.
+        #
+        # Fix: lock the two tables separately with plain (non-outer-join)
+        # FOR UPDATE queries, each ordered by id to keep a consistent lock
+        # order across concurrent checkouts (reduces deadlock risk), then
+        # merge the results in Python. A product with no inventory row is
+        # simply absent from inventory_rows and is reported as a validation
+        # error below, exactly as before.
+        product_ids = sorted(set(c[0] for c in cart_items))
         placeholders = ",".join(["%s"] * len(product_ids))
 
         cur.execute(
             f"""
-            SELECT p.id, p.name, p.sku, p.part_number, p.price, p.status,
-                   i.id AS inv_id, i.quantity, i.reserved_quantity
-            FROM products p
-            LEFT JOIN inventory i ON i.product_id = p.id
-            WHERE p.id IN ({placeholders})
-            FOR UPDATE OF i
+            SELECT id, name, sku, part_number, price, status
+            FROM products
+            WHERE id IN ({placeholders})
+            ORDER BY id
+            FOR UPDATE
             """,
             product_ids,
         )
-        product_rows = {r[0]: r for r in cur.fetchall()}
+        products_by_id = {r[0]: r for r in cur.fetchall()}
+
+        cur.execute(
+            f"""
+            SELECT product_id, id, quantity, reserved_quantity
+            FROM inventory
+            WHERE product_id IN ({placeholders})
+            ORDER BY product_id
+            FOR UPDATE
+            """,
+            product_ids,
+        )
+        inventory_by_product = {r[0]: r for r in cur.fetchall()}
+
+        product_rows = {}
+        for pid in product_ids:
+            if pid not in products_by_id:
+                continue
+            p = products_by_id[pid]
+            inv = inventory_by_product.get(pid)
+            product_rows[pid] = (
+                p[0], p[1], p[2], p[3], p[4], p[5],
+                inv[1] if inv else None,   # inv_id
+                inv[2] if inv else None,   # quantity
+                inv[3] if inv else None,   # reserved_quantity
+            )
 
         qty_map = {c[0]: c[1] for c in cart_items}
         order_items_data = []
@@ -2895,7 +2965,16 @@ def list_orders(
         if role == "CUSTOMER":
             query += " AND o.user_id = %s"; params.append(user_id)
         if status:
-            query += " AND o.order_status = %s"; params.append(status.upper())
+            # Support a single status ("DISPATCHED") or a comma-separated
+            # list ("DISPATCHED,OUT_FOR_DELIVERY,READY_FOR_DISPATCH") the
+            # same way the admin Deliveries/Orders pages send it. The
+            # previous version only ever matched a single exact value, so
+            # any multi-status filter silently returned zero rows.
+            statuses = [s.strip().upper() for s in status.split(",") if s.strip()]
+            if statuses:
+                placeholders = ",".join(["%s"] * len(statuses))
+                query += f" AND o.order_status IN ({placeholders})"
+                params.extend(statuses)
 
         query += " ORDER BY o.created_at DESC LIMIT %s OFFSET %s"
         params.extend([page_size, (page - 1) * page_size])
@@ -5629,7 +5708,7 @@ os.makedirs(_SETTINGS_IMG_DIR, exist_ok=True)
 @app.post("/api/admin/settings/upload-image")
 async def upload_settings_image(
     file: UploadFile = File(...),
-    current_user: dict = Depends(require_admin),
+    current_user: dict = Depends(require_staff_or_admin),
 ):
     """Upload a branding image (logo, favicon, banner) for the site settings."""
     if not file.content_type or not file.content_type.startswith("image/"):
@@ -5707,9 +5786,11 @@ os.makedirs(_PRODUCT_IMG_DIR, exist_ok=True)
 async def upload_product_image(
     product_id: int,
     file: UploadFile = File(...),
-    is_primary: bool = False,
-    current_user: dict = Depends(require_admin),
+    is_primary: str = "false",
+    current_user: dict = Depends(require_staff_or_admin),
 ):
+    # Convert string "true"/"false" from multipart form to bool
+    is_primary_bool = is_primary.lower() in ("true", "1", "yes")
     if not file.content_type or not file.content_type.startswith("image/"):
         raise HTTPException(status_code=400, detail="File must be an image")
     import uuid as _uuid
@@ -5723,13 +5804,22 @@ async def upload_product_image(
     try:
         conn = get_db_connection()
         cur = conn.cursor()
-        if is_primary:
+        # If this product has no primary image yet, the new image becomes
+        # primary automatically — otherwise an admin uploading a non-primary
+        # image for a brand-new product would leave it with zero primary
+        # images, which is exactly what made storefront/category cards show
+        # empty image areas even though a file had "uploaded successfully".
+        cur.execute("SELECT 1 FROM product_images WHERE product_id = %s AND is_primary = TRUE LIMIT 1", (product_id,))
+        has_primary = cur.fetchone() is not None
+        if not has_primary:
+            is_primary_bool = True
+        if is_primary_bool:
             cur.execute("UPDATE product_images SET is_primary = FALSE WHERE product_id = %s", (product_id,))
         cur.execute(
             """INSERT INTO product_images (product_id, image_url, is_primary, sort_order, created_at)
                VALUES (%s, %s, %s, COALESCE((SELECT MAX(sort_order)+1 FROM product_images WHERE product_id=%s), 0), NOW())
                RETURNING id, image_url, is_primary""",
-            (product_id, image_url, is_primary, product_id),
+            (product_id, image_url, is_primary_bool, product_id),
         )
         row = cur.fetchone()
         conn.commit()

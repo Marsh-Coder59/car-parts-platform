@@ -4,6 +4,7 @@ import { categoriesService } from '../../services/products.service';
 import { SkeletonCard } from '../../components/ui/Skeleton';
 import EmptyState from '../../components/ui/EmptyState';
 import type { Category } from '../../types';
+import { resolveImageUrl, onImageError } from '../../utils/image';
 
 export default function CategoriesPage() {
   const [categories, setCategories] = useState<Category[]>([]);
@@ -34,7 +35,7 @@ export default function CategoriesPage() {
               className="flex flex-col items-center gap-3 p-5 bg-white rounded-xl border border-gray-100 hover:border-brand-200 hover:shadow-md transition-all group text-center"
             >
               {cat.image_url ? (
-                <img src={cat.image_url} alt={cat.name} className="w-12 h-12 object-contain" />
+                <img src={resolveImageUrl(cat.image_url)} alt={cat.name} onError={onImageError} className="w-12 h-12 object-contain" />
               ) : (
                 <div className="w-12 h-12 bg-brand-50 group-hover:bg-brand-100 rounded-xl flex items-center justify-center text-2xl transition-colors">🔩</div>
               )}

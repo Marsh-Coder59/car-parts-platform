@@ -1,6 +1,7 @@
 import { Link } from 'react-router-dom';
 import { ShoppingCart, Heart } from 'lucide-react';
 import { formatCurrency } from '../../utils/format';
+import { resolveImageUrl, onImageError } from '../../utils/image';
 import { StockBadge } from '../ui/Badge';
 import type { ProductListItem } from '../../types';
 import { cartService } from '../../services/cart.service';
@@ -59,8 +60,9 @@ export default function ProductCard({ product }: ProductCardProps) {
       <div className="relative aspect-square bg-gray-50 overflow-hidden">
         {product.primary_image ? (
           <img
-            src={product.primary_image}
+            src={resolveImageUrl(product.primary_image)}
             alt={product.name}
+            onError={onImageError}
             className="w-full h-full object-cover group-hover:scale-105 transition-transform duration-300"
           />
         ) : (

@@ -7,6 +7,7 @@ import EmptyState from '../../components/ui/EmptyState';
 import { SkeletonCard } from '../../components/ui/Skeleton';
 import { StockBadge } from '../../components/ui/Badge';
 import type { WishlistItem } from '../../types';
+import { resolveImageUrl, onImageError } from '../../utils/image';
 import toast from 'react-hot-toast';
 
 export default function WishlistPage() {
@@ -57,7 +58,7 @@ export default function WishlistPage() {
               <Link to={`/products/${item.product_id}`}>
                 <div className="aspect-square bg-gray-50 flex items-center justify-center text-gray-200">
                   {item.image ? (
-                    <img src={item.image} alt={item.product_name} className="w-full h-full object-cover" />
+                    <img src={resolveImageUrl(item.image)} alt={item.product_name} onError={onImageError} className="w-full h-full object-cover" />
                   ) : (
                     <Heart className="h-10 w-10" />
                   )}

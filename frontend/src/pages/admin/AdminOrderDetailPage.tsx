@@ -179,7 +179,7 @@ export default function AdminOrderDetailPage() {
               </h2>
               {order.deposit_paid && (
                 <Button size="sm" variant="outline" onClick={() => {
-                  if (order.delivery) deliveryForm.reset(order.delivery as Record<string, unknown>);
+                  if (order.delivery) deliveryForm.reset(order.delivery as unknown as Record<string, unknown>);
                   setDeliveryModal(true);
                 }}>
                   {order.delivery ? 'Update' : 'Create'} Delivery

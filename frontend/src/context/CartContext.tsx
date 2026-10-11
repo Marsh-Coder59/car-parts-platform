@@ -1,9 +1,7 @@
-import React, { createContext, useContext, useState, useEffect, useCallback } from 'react';
+import React, { createContext, useContext, useState, useEffect, useCallback, useRef } from 'react';
 import { cartService } from '../services/cart.service';
 import { useAuth } from './AuthContext';
 import type { Cart } from '../types';
-
-const CART_STORAGE_KEY = 'partora_cart_snapshot';
 
 interface CartContextValue {
   cart: Cart | null;
@@ -16,46 +14,66 @@ const CartContext = createContext<CartContextValue | null>(null);
 
 export function CartProvider({ children }: { children: React.ReactNode }) {
   const { isAuthenticated, user } = useAuth();
-  const [cart, setCart] = useState<Cart | null>(() => {
-    // Restore cart from localStorage immediately (pre-auth snapshot)
-    try {
-      const saved = localStorage.getItem(CART_STORAGE_KEY);
-      return saved ? JSON.parse(saved) : null;
-    } catch { return null; }
-  });
+  // Cart state lives ONLY in memory for the lifetime of the authenticated
+  // session. The backend (user_sessions -> cart owned by user_id) is the
+  // single source of truth.
+  //
+  // Root cause of the cross-account cart leak this replaces: the previous
+  // implementation cached the cart under one unkeyed localStorage key
+  // ("partora_cart_snapshot") shared by every account that ever logged in
+  // on that browser, initialized React state synchronously from that key
+  // on mount, and explicitly skipped clearing it on logout. The next
+  // person to log in on the same browser would see the previous account's
+  // cart items for a moment (or indefinitely, if the background refresh
+  // failed). There is no safe way to key a *shared* storage slot by
+  // account without just re-fetching from the server, so we no longer
+  // persist cart data in browser storage at all.
+  const [cart, setCart] = useState<Cart | null>(null);
   const [loading, setLoading] = useState(false);
+  // Tracks which user_id the current `cart` state belongs to, so a stale
+  // response from a request started under a previous account can never be
+  // applied after an account switch.
+  const activeUserIdRef = useRef<number | string | null>(null);
 
   const refresh = useCallback(async () => {
     if (!isAuthenticated || !user || user.role !== 'CUSTOMER') {
-      // Not logged in — keep localStorage snapshot, clear live state
-      setCart(prev => {
-        // keep the snapshot from localStorage
-        try {
-          const saved = localStorage.getItem(CART_STORAGE_KEY);
-          return saved ? JSON.parse(saved) : prev;
-        } catch { return prev; }
-      });
+      activeUserIdRef.current = null;
+      setCart(null);
       return;
     }
+    const requestedUserId = user.id;
+    activeUserIdRef.current = requestedUserId;
     setLoading(true);
     try {
       const data = await cartService.get();
-      setCart(data);
-      // Persist to localStorage so cart survives session expiry
-      localStorage.setItem(CART_STORAGE_KEY, JSON.stringify(data));
+      // Only apply the result if we're still the most recent request for
+      // the same account (guards against a race during rapid account
+      // switching / logout-login).
+      if (activeUserIdRef.current === requestedUserId) {
+        setCart(data);
+      }
     } catch {
-      setCart(null);
+      if (activeUserIdRef.current === requestedUserId) {
+        setCart(null);
+      }
     } finally {
-      setLoading(false);
+      if (activeUserIdRef.current === requestedUserId) {
+        setLoading(false);
+      }
     }
   }, [isAuthenticated, user]);
 
-  useEffect(() => { refresh(); }, [refresh]);
+  // Re-fetch (or clear) the cart whenever auth state changes: login,
+  // logout, or switching to a different account.
+  useEffect(() => {
+    refresh();
+  }, [refresh]);
 
-  // When session expires, cart stays in localStorage; on next login it reloads
+  // Clear cart state immediately on logout/session-expiry, before the
+  // next account can possibly render anything.
   useEffect(() => {
     const handleExpired = () => {
-      // Cart snapshot already in localStorage — just clear live state
+      activeUserIdRef.current = null;
       setCart(null);
     };
     window.addEventListener('session-expired', handleExpired);

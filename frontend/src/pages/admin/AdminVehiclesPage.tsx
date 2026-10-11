@@ -11,7 +11,7 @@ import { getErrorMessage } from '../../services/api';
 import type { Vehicle } from '../../types';
 import toast from 'react-hot-toast';
 
-type FormValues = Omit<Vehicle, 'id'> & { year_from: string; year_to: string };
+type FormValues = Omit<Vehicle, 'id' | 'year_from' | 'year_to'> & { year_from: string; year_to: string };
 
 export default function AdminVehiclesPage() {
   const [vehicles, setVehicles] = useState<Vehicle[]>([]);

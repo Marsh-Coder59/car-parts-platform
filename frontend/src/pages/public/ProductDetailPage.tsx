@@ -9,6 +9,7 @@ import { StockBadge, Badge } from '../../components/ui/Badge';
 import { SkeletonLines } from '../../components/ui/Skeleton';
 import Button from '../../components/ui/Button';
 import type { ProductDetail, Review } from '../../types';
+import { resolveImageUrl, onImageError } from '../../utils/image';
 import { useAuth } from '../../context/AuthContext';
 import { useCart } from '../../context/CartContext';
 import toast from 'react-hot-toast';
@@ -106,7 +107,7 @@ export default function ProductDetailPage() {
         <div>
           <div className="aspect-square bg-gray-50 rounded-2xl overflow-hidden border border-gray-100 mb-3">
             {images.length > 0 ? (
-              <img src={images[activeImage]?.image_url} alt={product.name} className="w-full h-full object-cover" />
+              <img src={resolveImageUrl(images[activeImage]?.image_url)} alt={product.name} onError={onImageError} className="w-full h-full object-cover" />
             ) : (
               <div className="w-full h-full flex items-center justify-center text-gray-200">
                 <Package className="h-24 w-24" />
@@ -121,7 +122,7 @@ export default function ProductDetailPage() {
                     'w-16 h-16 rounded-lg overflow-hidden border-2 flex-shrink-0 transition-colors',
                     i === activeImage ? 'border-brand-500' : 'border-gray-100'
                   )}>
-                  <img src={img.image_url} alt="" className="w-full h-full object-cover" />
+                  <img src={resolveImageUrl(img.image_url)} alt="" onError={onImageError} className="w-full h-full object-cover" />
                 </button>
               ))}
             </div>

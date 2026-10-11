@@ -1,7 +1,7 @@
 import { useEffect, useState } from 'react';
 import { Link } from 'react-router-dom';
 import { Truck } from 'lucide-react';
-import { adminService } from '../../services/admin.service';
+import { ordersService } from '../../services/orders.service';
 import { formatDate, formatCurrency, getOrderStatusColor } from '../../utils/format';
 import { SkeletonTable } from '../../components/ui/Skeleton';
 import EmptyState from '../../components/ui/EmptyState';
@@ -13,10 +13,10 @@ export default function AdminDeliveriesPage() {
 
   useEffect(() => {
     // Filter orders that are in delivery-related statuses
-    adminService.getOrders({
+    ordersService.list({
       status: 'DISPATCHED,OUT_FOR_DELIVERY,READY_FOR_DISPATCH',
       page_size: 50,
-    }).then(res => {
+    }).then((res: any) => {
       setOrders(res.orders ?? res);
     }).catch(() => setOrders([]))
     .finally(() => setLoading(false));

@@ -40,12 +40,13 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
     const msUntilExpiry = expiresAt - Date.now();
     if (msUntilExpiry <= 0) return;
     expiryTimerRef.current = setTimeout(async () => {
-      // Session expired — log out but preserve cart
+      // Session expired — log out. The cart is owned server-side by the
+      // user's account, so nothing needs to be preserved client-side; the
+      // cart will simply be re-fetched from the server on next login.
       try { await authService.logout(); } catch { /* ignore */ }
       setUser(null);
       sessionStorage.removeItem(SESSION_KEY);
       localStorage.removeItem(SESSION_EXPIRY_KEY);
-      // Cart is in localStorage (cartService persists it there) so it survives
       window.dispatchEvent(new Event('session-expired'));
     }, msUntilExpiry);
   }, []);
@@ -102,7 +103,10 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
       setUser(null);
       sessionStorage.removeItem(SESSION_KEY);
       localStorage.removeItem(SESSION_EXPIRY_KEY);
-      // Intentionally NOT clearing cart from localStorage here
+      // Also clean up the legacy shared cart snapshot key if it exists
+      // from a previous build, so it can never leak into the next
+      // account that logs in on this browser.
+      try { localStorage.removeItem('partora_cart_snapshot'); } catch { /* ignore */ }
     }
   };
 
