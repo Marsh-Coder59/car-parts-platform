@@ -13,7 +13,7 @@ export default defineConfig(({ mode }) => {
 
       allowedHosts: [
         'modify-fares-lake-bass.trycloudflare.com',
-        'https://car-parts-platform-xivy.onrender.com/'
+        'car-parts-platform-xivy.onrender.com'
       ],
 
       proxy: {
