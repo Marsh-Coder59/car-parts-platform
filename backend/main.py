@@ -73,30 +73,50 @@ def hash_token(token: str) -> str:
     return hashlib.sha256(token.encode()).hexdigest()
 
 
-# ============================================================
-# FASTAPI APPLICATION
-# ============================================================
 app = FastAPI(
     title="CarParts API",
     description="Production backend for CarParts e-commerce marketplace",
-    version="2.0.0"
+    version="2.0.0",
 )
 
+# ============================================================
+# CORS CONFIGURATION
+# ============================================================
+DEFAULT_ALLOWED_ORIGINS = [
+    "http://localhost:3000",
+    "http://localhost:5173",
+    "http://localhost:5174",
+    "https://car-parts-platform-2.onrender.com",
+]
 
+allowed_origins = [
+    origin.strip().rstrip("/")
+    for origin in os.getenv(
+        "ALLOWED_ORIGINS",
+        ",".join(DEFAULT_ALLOWED_ORIGINS),
+    ).split(",")
+    if origin.strip()
+]
 
 app.add_middleware(
     CORSMiddleware,
-    allow_origins=os.getenv("ALLOWED_ORIGINS", "http://localhost:3000,http://localhost:5173,http://localhost:5174").split(","),
+    allow_origins=allowed_origins,
     allow_credentials=True,
     allow_methods=["*"],
     allow_headers=["*"],
 )
 
-# Serve uploaded static files (avatars, product images, settings images)
+# ============================================================
+# STATIC FILES (AVATARS, PRODUCT IMAGES, SETTINGS IMAGES)
+# ============================================================
 _STATIC_DIR = os.path.join(os.path.dirname(__file__), "static")
 os.makedirs(_STATIC_DIR, exist_ok=True)
-app.mount("/static", StaticFiles(directory=_STATIC_DIR), name="static")
 
+app.mount(
+    "/static",
+    StaticFiles(directory=_STATIC_DIR),
+    name="static",
+)
 
 # ============================================================
 # DECIMAL HELPERS
