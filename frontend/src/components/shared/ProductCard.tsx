@@ -55,9 +55,9 @@ export default function ProductCard({ product }: ProductCardProps) {
   };
 
   return (
-    <Link to={`/products/${product.id}`} className="group block bg-white rounded-xl border border-gray-100 hover:border-gray-200 hover:shadow-md transition-all overflow-hidden">
+    <Link to={`/products/${product.id}`} className="group block bg-white dark:bg-dark-800 rounded-xl border border-gray-100 dark:border-dark-700 hover:border-gray-200 hover:shadow-md transition-all overflow-hidden">
       {/* Image */}
-      <div className="relative aspect-square bg-gray-50 overflow-hidden">
+      <div className="relative aspect-square bg-gray-50 dark:bg-dark-900 overflow-hidden">
         {product.primary_image ? (
           <img
             src={resolveImageUrl(product.primary_image)}
@@ -81,27 +81,27 @@ export default function ProductCard({ product }: ProductCardProps) {
           onClick={handleWishlist}
           className="absolute top-2 right-2 p-1.5 bg-white/90 rounded-lg opacity-0 group-hover:opacity-100 transition-opacity hover:bg-white shadow-sm"
         >
-          <Heart className="h-3.5 w-3.5 text-gray-500" />
+          <Heart className="h-3.5 w-3.5 text-gray-500 dark:text-gray-400" />
         </button>
       </div>
 
       {/* Info */}
       <div className="p-3">
         {product.brand && (
-          <p className="text-xs text-gray-400 uppercase tracking-wide mb-0.5">{product.brand}</p>
+          <p className="text-xs text-gray-400 dark:text-gray-500 uppercase tracking-wide mb-0.5">{product.brand}</p>
         )}
-        <h3 className="text-sm font-semibold text-gray-900 leading-snug line-clamp-2 mb-2">
+        <h3 className="text-sm font-semibold text-gray-900 dark:text-gray-50 leading-snug line-clamp-2 mb-2">
           {product.name}
         </h3>
         {product.sku && (
-          <p className="text-xs text-gray-400 mb-2">SKU: {product.sku}</p>
+          <p className="text-xs text-gray-400 dark:text-gray-500 mb-2">SKU: {product.sku}</p>
         )}
 
         <div className="flex items-end justify-between gap-2">
           <div>
-            <p className="text-base font-bold text-gray-900">{formatCurrency(product.price)}</p>
+            <p className="text-base font-bold text-gray-900 dark:text-gray-50">{formatCurrency(product.price)}</p>
             {product.compare_at_price && product.compare_at_price > product.price && (
-              <p className="text-xs text-gray-400 line-through">{formatCurrency(product.compare_at_price)}</p>
+              <p className="text-xs text-gray-400 dark:text-gray-500 line-through">{formatCurrency(product.compare_at_price)}</p>
             )}
           </div>
           <StockBadge available={product.available_stock} />

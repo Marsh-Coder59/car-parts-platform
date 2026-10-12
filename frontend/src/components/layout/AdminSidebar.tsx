@@ -60,7 +60,7 @@ function NavLink({ item, collapsed, onNavigate }: { item: NavItem; collapsed: bo
         <button
           onClick={() => setOpen(!open)}
           className={`w-full flex items-center gap-3 px-3 py-2 rounded-lg text-sm font-medium transition-colors
-            ${isParentActive ? 'text-brand-600 bg-brand-50' : 'text-gray-600 hover:text-gray-900 hover:bg-gray-50'}`}
+            ${isParentActive ? 'text-brand-400 bg-brand-500/10' : 'text-gray-300 hover:text-white hover:bg-white/5'}`}
         >
           {item.icon}
           {!collapsed && (
@@ -71,7 +71,7 @@ function NavLink({ item, collapsed, onNavigate }: { item: NavItem; collapsed: bo
           )}
         </button>
         {!collapsed && open && (
-          <div className="ml-4 mt-1 space-y-0.5 border-l-2 border-gray-100 pl-3">
+          <div className="ml-4 mt-1 space-y-0.5 border-l-2 border-white/10 pl-3">
             {item.children.map(child => (
               <NavLink key={child.to} item={child} collapsed={collapsed} onNavigate={onNavigate} />
             ))}
@@ -86,7 +86,7 @@ function NavLink({ item, collapsed, onNavigate }: { item: NavItem; collapsed: bo
       to={item.to!}
       onClick={onNavigate}
       className={`flex items-center gap-3 px-3 py-2 rounded-lg text-sm font-medium transition-colors
-        ${isActive ? 'text-brand-600 bg-brand-50 font-semibold' : 'text-gray-600 hover:text-gray-900 hover:bg-gray-50'}`}
+        ${isActive ? 'text-white bg-brand-500 shadow-sm font-semibold' : 'text-gray-300 hover:text-white hover:bg-white/5'}`}
     >
       {item.icon}
       {!collapsed && <span>{item.label}</span>}
@@ -116,13 +116,15 @@ export default function AdminSidebar({ mobileOpen, onMobileClose }: AdminSidebar
   };
 
   const SidebarContent = () => (
-    <div className="flex flex-col h-full">
-      {/* Logo */}
-      <div className="flex items-center justify-between p-4 border-b border-gray-100">
-        <Logo size="sm" variant={collapsed ? 'icon' : 'full'} />
+    <div className="flex flex-col h-full bg-navy-900 text-gray-300">
+      {/* Logo — sidebar is permanently dark navy (brand identity), independent
+          of the app-wide light/dark content toggle, matching the storefront's
+          existing dark navy / orange identity. */}
+      <div className="flex items-center justify-between p-4 border-b border-white/10">
+        <Logo size="sm" variant={collapsed ? 'icon' : 'full'} onDark />
         <button
           onClick={() => setCollapsed(!collapsed)}
-          className="hidden lg:flex p-1.5 hover:bg-gray-100 rounded-lg text-gray-400"
+          className="hidden lg:flex p-1.5 hover:bg-white/10 rounded-lg text-gray-400 dark:text-gray-500"
         >
           <Menu className="h-4 w-4" />
         </button>
@@ -135,7 +137,7 @@ export default function AdminSidebar({ mobileOpen, onMobileClose }: AdminSidebar
         <Link
           to="/"
           onClick={onMobileClose}
-          className="flex items-center gap-3 px-3 py-2 rounded-lg text-sm font-medium text-gray-600 hover:text-brand-600 hover:bg-brand-50 border border-gray-100 transition-colors"
+          className="flex items-center gap-3 px-3 py-2 rounded-lg text-sm font-medium text-gray-300 hover:text-brand-400 hover:bg-white/5 border border-white/10 transition-colors"
         >
           <Home className="h-4 w-4 flex-shrink-0" />
           {!collapsed && <span>Back to Storefront</span>}
@@ -150,16 +152,16 @@ export default function AdminSidebar({ mobileOpen, onMobileClose }: AdminSidebar
       </nav>
 
       {/* User + Logout */}
-      <div className="border-t border-gray-100 p-3">
+      <div className="border-t border-white/10 p-3">
         {!collapsed && user && (
           <div className="px-3 py-2 mb-1">
-            <p className="text-xs font-semibold text-gray-900 truncate">{user.first_name} {user.last_name}</p>
-            <p className="text-xs text-gray-500 truncate">{user.role}</p>
+            <p className="text-xs font-semibold text-white truncate">{user.first_name} {user.last_name}</p>
+            <p className="text-xs text-gray-400 dark:text-gray-500 truncate">{user.role}</p>
           </div>
         )}
         <button
           onClick={handleLogout}
-          className="w-full flex items-center gap-3 px-3 py-2 text-sm font-medium text-red-600 hover:bg-red-50 rounded-lg transition-colors"
+          className="w-full flex items-center gap-3 px-3 py-2 text-sm font-medium text-red-400 hover:bg-red-500/10 rounded-lg transition-colors"
         >
           <LogOut className="h-4 w-4 flex-shrink-0" />
           {!collapsed && 'Sign Out'}
@@ -171,7 +173,7 @@ export default function AdminSidebar({ mobileOpen, onMobileClose }: AdminSidebar
   return (
     <>
       {/* Desktop sidebar */}
-      <aside className={`hidden lg:flex flex-col bg-white border-r border-gray-100 transition-all duration-300 ${collapsed ? 'w-16' : 'w-60'} min-h-screen flex-shrink-0 sticky top-0`}>
+      <aside className={`hidden lg:flex flex-col border-r border-white/10 transition-all duration-300 ${collapsed ? 'w-16' : 'w-60'} min-h-screen flex-shrink-0 sticky top-0`}>
         <SidebarContent />
       </aside>
 
@@ -179,10 +181,10 @@ export default function AdminSidebar({ mobileOpen, onMobileClose }: AdminSidebar
       {mobileOpen && (
         <div className="lg:hidden fixed inset-0 z-50 flex">
           <div className="absolute inset-0 bg-black/40" onClick={onMobileClose} />
-          <aside className="relative w-64 bg-white h-full shadow-2xl">
+          <aside className="relative w-64 h-full shadow-2xl">
             <button
               onClick={onMobileClose}
-              className="absolute top-4 right-4 p-1.5 hover:bg-gray-100 rounded-lg text-gray-400"
+              className="absolute top-4 right-4 p-1.5 hover:bg-white/10 rounded-lg text-gray-400 dark:text-gray-500 z-10"
             >
               <X className="h-5 w-5" />
             </button>

@@ -35,7 +35,7 @@ export default function NotificationsPage() {
   return (
     <div className="max-w-2xl mx-auto px-4 sm:px-6 py-8">
       <div className="flex items-center justify-between mb-6">
-        <h1 className="text-2xl font-bold text-gray-900">Notifications {unreadCount > 0 && <span className="ml-2 text-base font-medium text-brand-600">({unreadCount} unread)</span>}</h1>
+        <h1 className="text-2xl font-bold text-gray-900 dark:text-gray-50">Notifications {unreadCount > 0 && <span className="ml-2 text-base font-medium text-brand-600">({unreadCount} unread)</span>}</h1>
         {unreadCount > 0 && (
           <button onClick={markAll} className="flex items-center gap-1.5 text-sm text-brand-600 hover:text-brand-700 font-medium">
             <CheckCheck className="h-4 w-4" />Mark all read
@@ -50,14 +50,14 @@ export default function NotificationsPage() {
         <div className="space-y-2">
           {notifications.map(n => (
             <div key={n.id}
-              className={clsx('bg-white rounded-xl border p-4 cursor-pointer transition-all hover:shadow-sm', n.status === 'UNREAD' ? 'border-brand-200 bg-brand-50/30' : 'border-gray-100')}
+              className={clsx('bg-white dark:bg-dark-800 rounded-xl border p-4 cursor-pointer transition-all hover:shadow-sm', n.status === 'UNREAD' ? 'border-brand-200 bg-brand-50/30' : 'border-gray-100 dark:border-dark-700')}
               onClick={() => n.status === 'UNREAD' && markRead(n.id)}>
               <div className="flex items-start gap-3">
                 {n.status === 'UNREAD' && <span className="w-2 h-2 mt-1.5 rounded-full bg-brand-500 flex-shrink-0" />}
                 <div className="flex-1">
-                  <p className={clsx('text-sm', n.status === 'UNREAD' ? 'font-semibold text-gray-900' : 'font-medium text-gray-700')}>{n.title}</p>
-                  <p className="text-xs text-gray-500 mt-0.5">{n.message}</p>
-                  <p className="text-xs text-gray-400 mt-1">{formatDateTime(n.created_at)}</p>
+                  <p className={clsx('text-sm', n.status === 'UNREAD' ? 'font-semibold text-gray-900 dark:text-gray-50' : 'font-medium text-gray-700 dark:text-gray-200')}>{n.title}</p>
+                  <p className="text-xs text-gray-500 dark:text-gray-400 mt-0.5">{n.message}</p>
+                  <p className="text-xs text-gray-400 dark:text-gray-500 mt-1">{formatDateTime(n.created_at)}</p>
                 </div>
               </div>
             </div>

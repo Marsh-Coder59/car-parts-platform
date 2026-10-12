@@ -5,7 +5,7 @@ import Logo from '../shared/Logo';
 
 export default function PublicLayout() {
   return (
-    <div className="min-h-screen bg-gray-50 flex flex-col">
+    <div className="min-h-screen bg-gray-50 dark:bg-dark-900 flex flex-col">
       <PublicNav />
       <main className="flex-1">
         <Outlet />
@@ -15,7 +15,7 @@ export default function PublicLayout() {
           <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-8">
             <div>
               <Logo size="sm" />
-              <p className="mt-3 text-sm text-gray-400 leading-relaxed">
+              <p className="mt-3 text-sm text-gray-400 dark:text-gray-500 leading-relaxed">
                 Your trusted automotive parts marketplace. Quality parts, competitive prices.
               </p>
             </div>
@@ -43,7 +43,7 @@ export default function PublicLayout() {
               </ul>
             </div>
           </div>
-          <div className="border-t border-gray-800 mt-10 pt-6 text-xs text-gray-500 text-center">
+          <div className="border-t border-gray-800 mt-10 pt-6 text-xs text-gray-500 dark:text-gray-400 text-center">
             © {new Date().getFullYear()} Partora. Automotive Parts Marketplace.
           </div>
         </div>

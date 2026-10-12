@@ -16,7 +16,7 @@ export default function GlobalLoadingOverlay() {
       <div className="absolute inset-0 bg-white/60 backdrop-blur-sm" />
 
       {/* Card */}
-      <div className="relative z-10 flex flex-col items-center gap-6 rounded-2xl bg-white/90 shadow-2xl border border-gray-100 px-14 py-10">
+      <div className="relative z-10 flex flex-col items-center gap-6 rounded-2xl bg-white/90 shadow-2xl border border-gray-100 dark:border-dark-700 px-14 py-10">
         <Logo size="lg" />
 
         {/* Three bouncing dots */}

@@ -69,13 +69,13 @@ export default function AdminRefundsPage() {
     PENDING: 'bg-yellow-50 text-yellow-700',
     APPROVED: 'bg-blue-50 text-blue-700',
     COMPLETED: 'bg-green-50 text-green-700',
-    REJECTED: 'bg-red-50 text-red-700',
+    REJECTED: 'bg-red-50 dark:bg-red-900/20 text-red-700',
   };
 
   return (
     <div>
       <div className="flex items-center gap-4 mb-6">
-        <h1 className="text-2xl font-extrabold text-gray-900 flex-1">Refunds</h1>
+        <h1 className="text-2xl font-extrabold text-gray-900 dark:text-gray-50 flex-1">Refunds</h1>
         <Select value={statusFilter} onChange={e => setStatusFilter(e.target.value)} className="w-40">
           <option value="">All Statuses</option>
           <option value="PENDING">Pending</option>
@@ -91,31 +91,31 @@ export default function AdminRefundsPage() {
       {loading ? <SkeletonTable rows={5} cols={5} /> : refunds.length === 0 ? (
         <EmptyState title="No refunds" description="Refund records will appear here." />
       ) : (
-        <div className="bg-white rounded-xl border border-gray-100 overflow-hidden">
+        <div className="bg-white dark:bg-dark-800 rounded-xl border border-gray-100 dark:border-dark-700 overflow-hidden">
           <div className="overflow-x-auto">
             <table className="w-full text-sm">
-              <thead className="bg-gray-50 border-b border-gray-100">
+              <thead className="bg-gray-50 dark:bg-dark-900 border-b border-gray-100 dark:border-dark-700">
                 <tr>
                   {['Order', 'Customer', 'Amount', 'Reason', 'Status', 'Date', 'Actions'].map(h => (
-                    <th key={h} className="text-left px-4 py-3 text-xs font-semibold text-gray-500 uppercase tracking-wide">{h}</th>
+                    <th key={h} className="text-left px-4 py-3 text-xs font-semibold text-gray-500 dark:text-gray-400 uppercase tracking-wide">{h}</th>
                   ))}
                 </tr>
               </thead>
-              <tbody className="divide-y divide-gray-50">
+              <tbody className="divide-y divide-gray-50 dark:divide-dark-700">
                 {refunds.map(r => (
-                  <tr key={r.id} className="hover:bg-gray-50">
-                    <td className="px-4 py-3 font-semibold text-gray-900">{r.order_number}</td>
-                    <td className="px-4 py-3 text-gray-500 text-xs">{r.customer_email}</td>
-                    <td className="px-4 py-3 font-bold text-gray-900">{r.amount ? formatCurrency(r.amount) : '—'}</td>
-                    <td className="px-4 py-3 text-gray-600 max-w-[160px]">
+                  <tr key={r.id} className="hover:bg-gray-50 dark:hover:bg-dark-700">
+                    <td className="px-4 py-3 font-semibold text-gray-900 dark:text-gray-50">{r.order_number}</td>
+                    <td className="px-4 py-3 text-gray-500 dark:text-gray-400 text-xs">{r.customer_email}</td>
+                    <td className="px-4 py-3 font-bold text-gray-900 dark:text-gray-50">{r.amount ? formatCurrency(r.amount) : '—'}</td>
+                    <td className="px-4 py-3 text-gray-600 dark:text-gray-300 max-w-[160px]">
                       <p className="truncate text-xs">{r.reason || '—'}</p>
                     </td>
                     <td className="px-4 py-3">
-                      <span className={`text-xs font-semibold px-2 py-0.5 rounded-full ${STATUS_COLORS[r.status] || 'bg-gray-50 text-gray-600'}`}>
+                      <span className={`text-xs font-semibold px-2 py-0.5 rounded-full ${STATUS_COLORS[r.status] || 'bg-gray-50 dark:bg-dark-900 text-gray-600 dark:text-gray-300'}`}>
                         {r.status}
                       </span>
                     </td>
-                    <td className="px-4 py-3 text-xs text-gray-400">{formatDate(r.created_at)}</td>
+                    <td className="px-4 py-3 text-xs text-gray-400 dark:text-gray-500">{formatDate(r.created_at)}</td>
                     <td className="px-4 py-3">
                       {r.status !== 'COMPLETED' && r.status !== 'REJECTED' && (
                         <button
@@ -163,7 +163,7 @@ export default function AdminRefundsPage() {
         title="Update Refund">
         <form onSubmit={updateForm.handleSubmit(onUpdateRefund)} className="p-6 space-y-4">
           {updateModal && (
-            <div className="p-3 bg-gray-50 rounded-lg text-sm">
+            <div className="p-3 bg-gray-50 dark:bg-dark-900 rounded-lg text-sm">
               <p>Order: <span className="font-semibold">{updateModal.order_number}</span></p>
               {updateModal.amount && <p>Amount: <span className="font-semibold">{formatCurrency(updateModal.amount)}</span></p>}
             </div>

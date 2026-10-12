@@ -85,10 +85,10 @@ export default function ProductsPage() {
       {/* Header */}
       <div className="flex flex-col sm:flex-row sm:items-center gap-4 mb-6">
         <div className="flex-1">
-          <h1 className="text-2xl font-bold text-gray-900">
+          <h1 className="text-2xl font-bold text-gray-900 dark:text-gray-50">
             {search ? `Results for "${search}"` : 'All Parts'}
           </h1>
-          {!loading && <p className="text-sm text-gray-500 mt-0.5">{total} products found</p>}
+          {!loading && <p className="text-sm text-gray-500 dark:text-gray-400 mt-0.5">{total} products found</p>}
         </div>
         <div className="flex items-center gap-3">
           <Select
@@ -107,7 +107,7 @@ export default function ProductsPage() {
           </Select>
           <button
             onClick={() => setShowFilters(!showFilters)}
-            className="flex items-center gap-2 px-4 py-2 border border-gray-200 rounded-lg text-sm font-medium text-gray-700 hover:bg-gray-50 transition-colors"
+            className="flex items-center gap-2 px-4 py-2 border border-gray-200 dark:border-dark-600 rounded-lg text-sm font-medium text-gray-700 dark:text-gray-200 hover:bg-gray-50 dark:hover:bg-dark-700 transition-colors"
           >
             <SlidersHorizontal className="h-4 w-4" />
             Filters {hasFilters && <span className="w-2 h-2 bg-brand-500 rounded-full" />}
@@ -117,9 +117,9 @@ export default function ProductsPage() {
 
       {/* Filters panel */}
       {showFilters && (
-        <div className="bg-white rounded-xl border border-gray-100 p-5 mb-6">
+        <div className="bg-white dark:bg-dark-800 rounded-xl border border-gray-100 dark:border-dark-700 p-5 mb-6">
           <div className="flex items-center justify-between mb-4">
-            <h2 className="text-sm font-semibold text-gray-900">Filter Products</h2>
+            <h2 className="text-sm font-semibold text-gray-900 dark:text-gray-50">Filter Products</h2>
             {hasFilters && (
               <button onClick={clearFilters} className="text-xs text-red-600 hover:text-red-700 flex items-center gap-1">
                 <X className="h-3 w-3" /> Clear all

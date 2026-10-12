@@ -11,6 +11,21 @@
     <link href="https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600;700;800&display=swap" rel="stylesheet" />
   </head>
   <body>
+    <!--
+      Applies the last-known theme before React even loads, so there's no
+      flash of the wrong theme on refresh. This only reads the browser's
+      local cache (updated by ThemeContext whenever the theme changes);
+      the account's saved preference from the server still wins once
+      auth resolves, via ThemeContext syncing to user.theme_preference.
+    -->
+    <script>
+      (function () {
+        try {
+          var t = localStorage.getItem('partora_theme');
+          if (t === 'dark') document.documentElement.classList.add('dark');
+        } catch (e) {}
+      })();
+    </script>
     <div id="root"></div>
     <script type="module" src="/src/main.tsx"></script>
   </body>

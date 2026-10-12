@@ -101,8 +101,8 @@ function ImagePanel({
   };
 
   return (
-    <div className="p-4 bg-gray-50 rounded-xl mb-4">
-      <p className="text-sm font-semibold text-gray-900 mb-3">Product Images</p>
+    <div className="p-4 bg-gray-50 dark:bg-dark-900 rounded-xl mb-4">
+      <p className="text-sm font-semibold text-gray-900 dark:text-gray-50 mb-3">Product Images</p>
       <div className="flex flex-wrap gap-2 mb-3">
         {images.map(img => (
           <div key={img.id} className="relative group">
@@ -110,7 +110,7 @@ function ImagePanel({
               src={resolveImageUrl(img.image_url)}
               alt=""
               onError={onImageError}
-              className="w-16 h-16 rounded-lg object-cover border border-gray-200 bg-white"
+              className="w-16 h-16 rounded-lg object-cover border border-gray-200 dark:border-dark-600 bg-white dark:bg-dark-800"
             />
             {img.is_primary && (
               <span className="absolute -top-1 -left-1 text-[9px] bg-brand-500 text-white px-1 py-0.5 rounded font-semibold">
@@ -127,7 +127,7 @@ function ImagePanel({
           </div>
         ))}
         {images.length === 0 && (
-          <div className="w-16 h-16 rounded-lg border-2 border-dashed border-gray-200 flex items-center justify-center">
+          <div className="w-16 h-16 rounded-lg border-2 border-dashed border-gray-200 dark:border-dark-600 flex items-center justify-center">
             <ImageIcon className="h-6 w-6 text-gray-300" />
           </div>
         )}
@@ -136,13 +136,13 @@ function ImagePanel({
         type="button"
         onClick={() => inputRef.current?.click()}
         disabled={uploading}
-        className="flex items-center gap-2 px-3 py-1.5 text-sm font-medium border border-gray-300 rounded-lg text-gray-700 hover:bg-white disabled:opacity-50 transition-colors"
+        className="flex items-center gap-2 px-3 py-1.5 text-sm font-medium border border-gray-300 rounded-lg text-gray-700 dark:text-gray-200 hover:bg-white disabled:opacity-50 transition-colors"
       >
         {uploading
           ? <><RefreshCw className="h-4 w-4 animate-spin" />Uploading…</>
           : <><Upload className="h-4 w-4" />Upload Images</>}
       </button>
-      <p className="text-xs text-gray-400 mt-1">JPG, PNG, WEBP · Max 8 MB · Multiple files allowed</p>
+      <p className="text-xs text-gray-400 dark:text-gray-500 mt-1">JPG, PNG, WEBP · Max 8 MB · Multiple files allowed</p>
       <input ref={inputRef} type="file" accept="image/*" multiple className="hidden" onChange={handleFiles} />
     </div>
   );
@@ -261,7 +261,7 @@ export default function AdminProductForm({ productId, onSuccess, onCancel }: Pro
 
   const handleDoneWithImages = () => onSuccess();
 
-  if (loading) return <div className="p-8 text-center text-gray-400 text-sm">Loading…</div>;
+  if (loading) return <div className="p-8 text-center text-gray-400 dark:text-gray-500 text-sm">Loading…</div>;
 
   return (
     <div className="p-6">
@@ -347,7 +347,7 @@ export default function AdminProductForm({ productId, onSuccess, onCancel }: Pro
 
           <div className="flex items-center gap-2 pt-7">
             <input type="checkbox" id="is_featured" {...register('is_featured')} className="w-4 h-4 rounded" />
-            <label htmlFor="is_featured" className="text-sm font-medium text-gray-700 cursor-pointer">Featured product</label>
+            <label htmlFor="is_featured" className="text-sm font-medium text-gray-700 dark:text-gray-200 cursor-pointer">Featured product</label>
           </div>
         </div>
 
@@ -361,13 +361,13 @@ export default function AdminProductForm({ productId, onSuccess, onCancel }: Pro
             onImagesChange={setImages}
           />
         ) : (
-          <div className="mb-4 p-4 bg-gray-50 rounded-xl border-2 border-dashed border-gray-200 text-center">
+          <div className="mb-4 p-4 bg-gray-50 dark:bg-dark-900 rounded-xl border-2 border-dashed border-gray-200 dark:border-dark-600 text-center">
             <ImageIcon className="h-8 w-8 text-gray-300 mx-auto mb-2" />
-            <p className="text-sm text-gray-400">Save the product first, then upload images</p>
+            <p className="text-sm text-gray-400 dark:text-gray-500">Save the product first, then upload images</p>
           </div>
         )}
 
-        <div className="flex gap-3 pt-2 border-t border-gray-100">
+        <div className="flex gap-3 pt-2 border-t border-gray-100 dark:border-dark-700">
           <Button type="button" variant="ghost" fullWidth onClick={onCancel}>Cancel</Button>
           {savedProductId && !productId ? (
             // After creating, show a "Done" button alongside Save

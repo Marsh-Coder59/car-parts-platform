@@ -31,7 +31,7 @@ export function PaymentStatusBadge({ status }: { status: string }) {
 }
 
 export function StockBadge({ available }: { available: number }) {
-  if (available <= 0) return <Badge className="text-red-700 bg-red-50">Out of Stock</Badge>;
+  if (available <= 0) return <Badge className="text-red-700 bg-red-50 dark:bg-red-900/20">Out of Stock</Badge>;
   if (available <= 5) return <Badge className="text-orange-700 bg-orange-50">Low Stock ({available})</Badge>;
   return <Badge className="text-green-700 bg-green-50">In Stock</Badge>;
 }

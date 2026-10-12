@@ -24,19 +24,19 @@ export default function ForgotPasswordPage() {
   };
 
   return (
-    <div className="min-h-screen bg-gray-50 flex items-center justify-center px-4 py-12">
+    <div className="min-h-screen bg-gray-50 dark:bg-dark-900 flex items-center justify-center px-4 py-12">
       <div className="w-full max-w-md">
         <div className="text-center mb-8">
           <div className="flex justify-center mb-4"><Logo size="lg" /></div>
-          <h1 className="text-2xl font-bold text-gray-900">Reset your password</h1>
-          <p className="text-sm text-gray-500 mt-1">Enter your email and we'll send a reset link</p>
+          <h1 className="text-2xl font-bold text-gray-900 dark:text-gray-50">Reset your password</h1>
+          <p className="text-sm text-gray-500 dark:text-gray-400 mt-1">Enter your email and we'll send a reset link</p>
         </div>
-        <div className="bg-white rounded-2xl shadow-sm border border-gray-100 p-8">
+        <div className="bg-white dark:bg-dark-800 rounded-2xl shadow-sm border border-gray-100 dark:border-dark-700 p-8">
           {sent ? (
             <div className="text-center py-4">
               <div className="w-14 h-14 bg-green-100 rounded-full flex items-center justify-center mx-auto mb-4 text-2xl">✉</div>
-              <p className="text-sm text-gray-700 font-medium">If that email is registered, a reset link has been sent.</p>
-              <p className="text-xs text-gray-500 mt-1">Check your inbox (and spam folder).</p>
+              <p className="text-sm text-gray-700 dark:text-gray-200 font-medium">If that email is registered, a reset link has been sent.</p>
+              <p className="text-xs text-gray-500 dark:text-gray-400 mt-1">Check your inbox (and spam folder).</p>
               <Link to="/login" className="mt-4 inline-block text-sm text-brand-600 hover:underline">Back to sign in</Link>
             </div>
           ) : (
@@ -49,7 +49,7 @@ export default function ForgotPasswordPage() {
                 {...register('email', { required: 'Email is required' })}
               />
               <Button type="submit" fullWidth size="lg">Send Reset Link</Button>
-              <p className="text-center text-sm text-gray-500">
+              <p className="text-center text-sm text-gray-500 dark:text-gray-400">
                 <Link to="/login" className="text-brand-600 hover:underline">Back to sign in</Link>
               </p>
             </form>

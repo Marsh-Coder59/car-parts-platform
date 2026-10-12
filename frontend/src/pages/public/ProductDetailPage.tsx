@@ -66,7 +66,7 @@ export default function ProductDetailPage() {
     return (
       <div className="max-w-7xl mx-auto px-4 sm:px-6 py-10">
         <div className="grid md:grid-cols-2 gap-10">
-          <div className="aspect-square bg-gray-100 rounded-2xl animate-pulse" />
+          <div className="aspect-square bg-gray-100 dark:bg-dark-700 rounded-2xl animate-pulse" />
           <div className="space-y-4">
             <SkeletonLines lines={6} />
           </div>
@@ -79,7 +79,7 @@ export default function ProductDetailPage() {
     return (
       <div className="max-w-7xl mx-auto px-4 sm:px-6 py-20 text-center">
         <Package className="h-16 w-16 text-gray-200 mx-auto mb-4" />
-        <h1 className="text-xl font-bold text-gray-900">Product not found</h1>
+        <h1 className="text-xl font-bold text-gray-900 dark:text-gray-50">Product not found</h1>
         <Link to="/products" className="text-brand-600 hover:underline text-sm mt-2 inline-block">← Back to products</Link>
       </div>
     );
@@ -94,18 +94,18 @@ export default function ProductDetailPage() {
   return (
     <div className="max-w-7xl mx-auto px-4 sm:px-6 py-8">
       {/* Breadcrumb */}
-      <nav className="flex items-center gap-2 text-sm text-gray-500 mb-6">
-        <Link to="/" className="hover:text-gray-700">Home</Link>
+      <nav className="flex items-center gap-2 text-sm text-gray-500 dark:text-gray-400 mb-6">
+        <Link to="/" className="hover:text-gray-700 dark:hover:text-gray-200">Home</Link>
         <ChevronRight className="h-3 w-3" />
-        <Link to="/products" className="hover:text-gray-700">Products</Link>
+        <Link to="/products" className="hover:text-gray-700 dark:hover:text-gray-200">Products</Link>
         <ChevronRight className="h-3 w-3" />
-        <span className="text-gray-900 font-medium truncate max-w-xs">{product.name}</span>
+        <span className="text-gray-900 dark:text-gray-50 font-medium truncate max-w-xs">{product.name}</span>
       </nav>
 
       <div className="grid md:grid-cols-2 gap-10 mb-12">
         {/* Images */}
         <div>
-          <div className="aspect-square bg-gray-50 rounded-2xl overflow-hidden border border-gray-100 mb-3">
+          <div className="aspect-square bg-gray-50 dark:bg-dark-900 rounded-2xl overflow-hidden border border-gray-100 dark:border-dark-700 mb-3">
             {images.length > 0 ? (
               <img src={resolveImageUrl(images[activeImage]?.image_url)} alt={product.name} onError={onImageError} className="w-full h-full object-cover" />
             ) : (
@@ -120,7 +120,7 @@ export default function ProductDetailPage() {
                 <button key={img.id} onClick={() => setActiveImage(i)}
                   className={clsx(
                     'w-16 h-16 rounded-lg overflow-hidden border-2 flex-shrink-0 transition-colors',
-                    i === activeImage ? 'border-brand-500' : 'border-gray-100'
+                    i === activeImage ? 'border-brand-500' : 'border-gray-100 dark:border-dark-700'
                   )}>
                   <img src={resolveImageUrl(img.image_url)} alt="" onError={onImageError} className="w-full h-full object-cover" />
                 </button>
@@ -132,34 +132,34 @@ export default function ProductDetailPage() {
         {/* Details */}
         <div>
           {brand && <p className="text-sm font-medium text-brand-600 mb-1">{brand}</p>}
-          <h1 className="text-2xl lg:text-3xl font-extrabold text-gray-900 mb-3">{product.name}</h1>
+          <h1 className="text-2xl lg:text-3xl font-extrabold text-gray-900 dark:text-gray-50 mb-3">{product.name}</h1>
 
           <div className="flex flex-wrap gap-2 mb-4">
             <StockBadge available={available} />
-            <Badge className="bg-gray-100 text-gray-600">{product.condition}</Badge>
+            <Badge className="bg-gray-100 dark:bg-dark-700 text-gray-600 dark:text-gray-300">{product.condition}</Badge>
             {category && <Badge className="bg-blue-50 text-blue-700">{category}</Badge>}
           </div>
 
           {/* Price */}
           <div className="mb-5">
-            <span className="text-3xl font-extrabold text-gray-900">{formatCurrency(product.price)}</span>
+            <span className="text-3xl font-extrabold text-gray-900 dark:text-gray-50">{formatCurrency(product.price)}</span>
             {product.compare_at_price && product.compare_at_price > product.price && (
-              <span className="ml-3 text-lg text-gray-400 line-through">{formatCurrency(product.compare_at_price)}</span>
+              <span className="ml-3 text-lg text-gray-400 dark:text-gray-500 line-through">{formatCurrency(product.compare_at_price)}</span>
             )}
           </div>
 
           {/* SKU / Part number */}
           <div className="grid grid-cols-2 gap-3 text-sm mb-5">
             {product.sku && (
-              <div className="bg-gray-50 rounded-lg p-3">
-                <p className="text-gray-500 text-xs mb-0.5">SKU</p>
-                <p className="font-mono font-semibold text-gray-900">{product.sku}</p>
+              <div className="bg-gray-50 dark:bg-dark-900 rounded-lg p-3">
+                <p className="text-gray-500 dark:text-gray-400 text-xs mb-0.5">SKU</p>
+                <p className="font-mono font-semibold text-gray-900 dark:text-gray-50">{product.sku}</p>
               </div>
             )}
             {product.part_number && (
-              <div className="bg-gray-50 rounded-lg p-3">
-                <p className="text-gray-500 text-xs mb-0.5">Part Number</p>
-                <p className="font-mono font-semibold text-gray-900">{product.part_number}</p>
+              <div className="bg-gray-50 dark:bg-dark-900 rounded-lg p-3">
+                <p className="text-gray-500 dark:text-gray-400 text-xs mb-0.5">Part Number</p>
+                <p className="font-mono font-semibold text-gray-900 dark:text-gray-50">{product.part_number}</p>
               </div>
             )}
           </div>
@@ -167,12 +167,12 @@ export default function ProductDetailPage() {
           {/* Quantity + Add to cart */}
           {canBuy && (
             <div className="flex items-center gap-3 mb-4">
-              <div className="flex items-center border border-gray-200 rounded-lg overflow-hidden">
-                <button onClick={() => setQty(q => Math.max(1, q - 1))} className="px-3 py-2 hover:bg-gray-50 text-gray-600 font-bold">−</button>
-                <span className="px-4 py-2 text-sm font-semibold border-x border-gray-200 min-w-[3rem] text-center">{qty}</span>
-                <button onClick={() => setQty(q => Math.min(available, q + 1))} className="px-3 py-2 hover:bg-gray-50 text-gray-600 font-bold">+</button>
+              <div className="flex items-center border border-gray-200 dark:border-dark-600 rounded-lg overflow-hidden">
+                <button onClick={() => setQty(q => Math.max(1, q - 1))} className="px-3 py-2 hover:bg-gray-50 dark:hover:bg-dark-700 text-gray-600 dark:text-gray-300 font-bold">−</button>
+                <span className="px-4 py-2 text-sm font-semibold border-x border-gray-200 dark:border-dark-600 min-w-[3rem] text-center">{qty}</span>
+                <button onClick={() => setQty(q => Math.min(available, q + 1))} className="px-3 py-2 hover:bg-gray-50 dark:hover:bg-dark-700 text-gray-600 dark:text-gray-300 font-bold">+</button>
               </div>
-              <span className="text-xs text-gray-500">{available} available</span>
+              <span className="text-xs text-gray-500 dark:text-gray-400">{available} available</span>
             </div>
           )}
 
@@ -188,7 +188,7 @@ export default function ProductDetailPage() {
             </Button>
             <button
               onClick={handleWishlist}
-              className="p-3 border border-gray-200 rounded-lg hover:bg-gray-50 text-gray-500 hover:text-red-500 transition-colors"
+              className="p-3 border border-gray-200 dark:border-dark-600 rounded-lg hover:bg-gray-50 dark:hover:bg-dark-700 text-gray-500 dark:text-gray-400 hover:text-red-500 transition-colors"
             >
               <Heart className="h-5 w-5" />
             </button>
@@ -196,9 +196,9 @@ export default function ProductDetailPage() {
 
           {/* Description */}
           {product.description && (
-            <div className="mt-6 pt-6 border-t border-gray-100">
-              <h2 className="text-sm font-semibold text-gray-900 mb-2">Description</h2>
-              <p className="text-sm text-gray-600 leading-relaxed whitespace-pre-line">{product.description}</p>
+            <div className="mt-6 pt-6 border-t border-gray-100 dark:border-dark-700">
+              <h2 className="text-sm font-semibold text-gray-900 dark:text-gray-50 mb-2">Description</h2>
+              <p className="text-sm text-gray-600 dark:text-gray-300 leading-relaxed whitespace-pre-line">{product.description}</p>
             </div>
           )}
         </div>
@@ -207,14 +207,14 @@ export default function ProductDetailPage() {
       {/* Compatible vehicles */}
       {product.compatible_vehicles?.length > 0 && (
         <section className="mb-10">
-          <h2 className="text-lg font-bold text-gray-900 mb-4 flex items-center gap-2">
+          <h2 className="text-lg font-bold text-gray-900 dark:text-gray-50 mb-4 flex items-center gap-2">
             <Car className="h-5 w-5 text-brand-500" /> Compatible Vehicles
           </h2>
           <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-3">
             {product.compatible_vehicles.map(v => (
-              <div key={v.id} className="bg-gray-50 rounded-lg p-3 text-sm">
-                <p className="font-semibold text-gray-900">{v.make} {v.model}</p>
-                <p className="text-gray-500">
+              <div key={v.id} className="bg-gray-50 dark:bg-dark-900 rounded-lg p-3 text-sm">
+                <p className="font-semibold text-gray-900 dark:text-gray-50">{v.make} {v.model}</p>
+                <p className="text-gray-500 dark:text-gray-400">
                   {v.year_from && v.year_to ? `${v.year_from}–${v.year_to}` : v.year_from || v.year_to || ''}
                   {v.engine && ` · ${v.engine}`}
                   {v.fuel_type && ` · ${v.fuel_type}`}
@@ -227,25 +227,25 @@ export default function ProductDetailPage() {
 
       {/* Reviews */}
       <section>
-        <h2 className="text-lg font-bold text-gray-900 mb-4 flex items-center gap-2">
+        <h2 className="text-lg font-bold text-gray-900 dark:text-gray-50 mb-4 flex items-center gap-2">
           <Star className="h-5 w-5 text-brand-500" /> Customer Reviews
         </h2>
         {reviews.length === 0 ? (
-          <p className="text-sm text-gray-500">No reviews yet for this product.</p>
+          <p className="text-sm text-gray-500 dark:text-gray-400">No reviews yet for this product.</p>
         ) : (
           <div className="space-y-4">
             {reviews.map(r => (
-              <div key={r.id} className="bg-white rounded-xl border border-gray-100 p-4">
+              <div key={r.id} className="bg-white dark:bg-dark-800 rounded-xl border border-gray-100 dark:border-dark-700 p-4">
                 <div className="flex items-center gap-2 mb-2">
                   <div className="flex">
                     {Array.from({ length: 5 }).map((_, i) => (
                       <Star key={i} className={clsx('h-4 w-4', i < r.rating ? 'text-yellow-400 fill-yellow-400' : 'text-gray-200 fill-gray-200')} />
                     ))}
                   </div>
-                  <span className="text-xs text-gray-500">{r.reviewer} · {formatDate(r.created_at)}</span>
+                  <span className="text-xs text-gray-500 dark:text-gray-400">{r.reviewer} · {formatDate(r.created_at)}</span>
                 </div>
-                {r.title && <p className="text-sm font-semibold text-gray-900 mb-1">{r.title}</p>}
-                {r.comment && <p className="text-sm text-gray-600">{r.comment}</p>}
+                {r.title && <p className="text-sm font-semibold text-gray-900 dark:text-gray-50 mb-1">{r.title}</p>}
+                {r.comment && <p className="text-sm text-gray-600 dark:text-gray-300">{r.comment}</p>}
               </div>
             ))}
           </div>

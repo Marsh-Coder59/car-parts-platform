@@ -71,7 +71,7 @@ export default function AdminStaffPage() {
   return (
     <div>
       <div className="flex items-center justify-between mb-6">
-        <h1 className="text-2xl font-extrabold text-gray-900">Staff Management</h1>
+        <h1 className="text-2xl font-extrabold text-gray-900 dark:text-gray-50">Staff Management</h1>
         <Button size="sm" onClick={() => { reset({ role: 'STAFF' }); setModal('create'); }} leftIcon={<Plus className="h-4 w-4" />}>
           Add Staff
         </Button>
@@ -81,20 +81,20 @@ export default function AdminStaffPage() {
         <EmptyState title="No staff accounts" description="Create staff and admin accounts here."
           action={<Button onClick={() => setModal('create')}>Add Staff</Button>} />
       ) : (
-        <div className="bg-white rounded-xl border border-gray-100 overflow-hidden">
+        <div className="bg-white dark:bg-dark-800 rounded-xl border border-gray-100 dark:border-dark-700 overflow-hidden">
           <table className="w-full text-sm">
-            <thead className="bg-gray-50 border-b border-gray-100">
+            <thead className="bg-gray-50 dark:bg-dark-900 border-b border-gray-100 dark:border-dark-700">
               <tr>
                 {['Name', 'Email', 'Role', 'Status', 'Joined', 'Actions'].map(h => (
-                  <th key={h} className="text-left px-4 py-3 text-xs font-semibold text-gray-500 uppercase tracking-wide">{h}</th>
+                  <th key={h} className="text-left px-4 py-3 text-xs font-semibold text-gray-500 dark:text-gray-400 uppercase tracking-wide">{h}</th>
                 ))}
               </tr>
             </thead>
-            <tbody className="divide-y divide-gray-50">
+            <tbody className="divide-y divide-gray-50 dark:divide-dark-700">
               {staff.map(s => (
-                <tr key={s.id} className="hover:bg-gray-50">
-                  <td className="px-4 py-3 font-semibold text-gray-900">{s.first_name} {s.last_name}</td>
-                  <td className="px-4 py-3 text-gray-500">{s.email}</td>
+                <tr key={s.id} className="hover:bg-gray-50 dark:hover:bg-dark-700">
+                  <td className="px-4 py-3 font-semibold text-gray-900 dark:text-gray-50">{s.first_name} {s.last_name}</td>
+                  <td className="px-4 py-3 text-gray-500 dark:text-gray-400">{s.email}</td>
                   <td className="px-4 py-3">
                     <span className={`text-xs font-bold px-2 py-0.5 rounded-full ${s.role === 'ADMIN' ? 'bg-purple-50 text-purple-700' : 'bg-blue-50 text-blue-700'}`}>
                       {s.role}
@@ -103,14 +103,14 @@ export default function AdminStaffPage() {
                   <td className="px-4 py-3">
                     <span className={`text-xs font-semibold ${s.status === 'ACTIVE' ? 'text-green-600' : 'text-red-600'}`}>{s.status}</span>
                   </td>
-                  <td className="px-4 py-3 text-xs text-gray-400">{formatDate(s.created_at)}</td>
+                  <td className="px-4 py-3 text-xs text-gray-400 dark:text-gray-500">{formatDate(s.created_at)}</td>
                   <td className="px-4 py-3">
                     <div className="flex gap-1">
-                      <button onClick={() => openEdit(s)} className="p-1.5 text-gray-400 hover:text-brand-600 hover:bg-brand-50 rounded-lg transition-colors">
+                      <button onClick={() => openEdit(s)} className="p-1.5 text-gray-400 dark:text-gray-500 hover:text-brand-600 hover:bg-brand-50 dark:hover:bg-brand-900/30 rounded-lg transition-colors">
                         <Edit2 className="h-3.5 w-3.5" />
                       </button>
                       {s.status === 'ACTIVE' && (
-                        <button onClick={() => deactivate(s.id)} className="p-1.5 text-gray-400 hover:text-red-500 hover:bg-red-50 rounded-lg transition-colors">
+                        <button onClick={() => deactivate(s.id)} className="p-1.5 text-gray-400 dark:text-gray-500 hover:text-red-500 hover:bg-red-50 dark:hover:bg-red-900/30 rounded-lg transition-colors">
                           <UserX className="h-3.5 w-3.5" />
                         </button>
                       )}

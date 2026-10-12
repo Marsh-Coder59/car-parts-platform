@@ -1,6 +1,7 @@
 import { useEffect, useRef, useState } from 'react';
 import { useForm } from 'react-hook-form';
-import { Building2, Globe, Phone, Banknote, Upload, X, ImageIcon } from 'lucide-react';
+import { Building2, Globe, Phone, Banknote, Upload, X, ImageIcon, Sun, Moon, Check } from 'lucide-react';
+import { useTheme } from '../../context/ThemeContext';
 import { adminService } from '../../services/admin.service';
 import { Input } from '../../components/ui/Input';
 import Button from '../../components/ui/Button';
@@ -65,12 +66,12 @@ function ImageUploadField({ label, currentUrl, onUploaded, onRemove, hint }: Ima
 
   return (
     <div className="w-full">
-      <label className="block text-sm font-medium text-gray-700 mb-1.5">{label}</label>
-      {hint && <p className="text-xs text-gray-400 mb-2">{hint}</p>}
+      <label className="block text-sm font-medium text-gray-700 dark:text-gray-200 mb-1.5">{label}</label>
+      {hint && <p className="text-xs text-gray-400 dark:text-gray-500 mb-2">{hint}</p>}
 
       <div className="flex items-center gap-4">
         {/* Preview box */}
-        <div className="w-20 h-20 rounded-lg border border-gray-200 bg-gray-50 flex items-center justify-center overflow-hidden flex-shrink-0">
+        <div className="w-20 h-20 rounded-lg border border-gray-200 dark:border-dark-600 bg-gray-50 dark:bg-dark-900 flex items-center justify-center overflow-hidden flex-shrink-0">
           {preview
             ? <img src={resolveImageUrl(preview)} alt={label} onError={onImageError} className="w-full h-full object-contain" />
             : <ImageIcon className="h-8 w-8 text-gray-300" />}
@@ -81,7 +82,7 @@ function ImageUploadField({ label, currentUrl, onUploaded, onRemove, hint }: Ima
             type="button"
             onClick={() => inputRef.current?.click()}
             disabled={uploading}
-            className="flex items-center gap-2 px-3 py-1.5 text-sm font-medium border border-gray-300 rounded-lg text-gray-700 hover:bg-gray-50 disabled:opacity-50 transition-colors"
+            className="flex items-center gap-2 px-3 py-1.5 text-sm font-medium border border-gray-300 rounded-lg text-gray-700 dark:text-gray-200 hover:bg-gray-50 dark:hover:bg-dark-700 disabled:opacity-50 transition-colors"
           >
             <Upload className="h-4 w-4" />
             {uploading ? 'Uploading…' : preview ? 'Replace' : 'Upload Image'}
@@ -156,24 +157,68 @@ export default function AdminSettingsPage() {
     }
   };
 
-  if (loading) return <div className="text-gray-400 text-sm">Loading settings…</div>;
+  if (loading) return <div className="text-gray-400 dark:text-gray-500 text-sm">Loading settings…</div>;
+
+  const ThemeSection = () => {
+    const { theme, setTheme } = useTheme();
+    const options: { value: 'light' | 'dark'; label: string; icon: React.ReactNode }[] = [
+      { value: 'light', label: 'Light', icon: <Sun className="h-5 w-5" /> },
+      { value: 'dark', label: 'Dark', icon: <Moon className="h-5 w-5" /> },
+    ];
+    return (
+      <div className="bg-white dark:bg-dark-800 rounded-xl border border-gray-100 dark:border-dark-700 p-6 mb-5">
+        <h2 className="text-sm font-bold text-gray-900 dark:text-gray-50 mb-1 flex items-center gap-2">
+          {theme === 'dark' ? <Moon className="h-4 w-4 text-brand-500" /> : <Sun className="h-4 w-4 text-brand-500" />} Theme
+        </h2>
+        <p className="text-xs text-gray-500 dark:text-gray-400 mb-4">
+          Applies to your account everywhere you're signed in — admin, staff, and customer pages — and is remembered for your next sign-in.
+        </p>
+        <div className="grid grid-cols-2 gap-3 max-w-sm">
+          {options.map(opt => {
+            const active = theme === opt.value;
+            return (
+              <button
+                key={opt.value}
+                type="button"
+                onClick={() => setTheme(opt.value)}
+                className={`relative flex flex-col items-center gap-2 py-4 rounded-xl border-2 transition-colors
+                  ${active
+                    ? 'border-brand-500 bg-brand-50 dark:bg-brand-900/20 text-brand-600 dark:text-brand-400'
+                    : 'border-gray-200 dark:border-dark-600 text-gray-500 dark:text-gray-400 hover:border-gray-300 dark:hover:border-dark-500'}`}
+              >
+                {active && (
+                  <span className="absolute top-2 right-2 h-4 w-4 rounded-full bg-brand-500 text-white flex items-center justify-center">
+                    <Check className="h-2.5 w-2.5" />
+                  </span>
+                )}
+                {opt.icon}
+                <span className="text-sm font-semibold">{opt.label}</span>
+              </button>
+            );
+          })}
+        </div>
+      </div>
+    );
+  };
 
   const Section = ({ icon, title, children }: { icon: React.ReactNode; title: string; children: React.ReactNode }) => (
-    <div className="bg-white rounded-xl border border-gray-100 p-6 mb-5">
-      <h2 className="text-sm font-bold text-gray-900 mb-4 flex items-center gap-2">{icon} {title}</h2>
+    <div className="bg-white dark:bg-dark-800 rounded-xl border border-gray-100 dark:border-dark-700 p-6 mb-5">
+      <h2 className="text-sm font-bold text-gray-900 dark:text-gray-50 mb-4 flex items-center gap-2">{icon} {title}</h2>
       <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">{children}</div>
     </div>
   );
 
   return (
     <div className="max-w-3xl">
-      <h1 className="text-2xl font-extrabold text-gray-900 mb-6">Site Settings</h1>
+      <h1 className="text-2xl font-extrabold text-gray-900 dark:text-gray-50 mb-6">Site Settings</h1>
+
+      <ThemeSection />
 
       <form onSubmit={handleSubmit(onSubmit)}>
 
         {/* ── Branding / Images ─────────────────────────────────────────── */}
-        <div className="bg-white rounded-xl border border-gray-100 p-6 mb-5">
-          <h2 className="text-sm font-bold text-gray-900 mb-4 flex items-center gap-2">
+        <div className="bg-white dark:bg-dark-800 rounded-xl border border-gray-100 dark:border-dark-700 p-6 mb-5">
+          <h2 className="text-sm font-bold text-gray-900 dark:text-gray-50 mb-4 flex items-center gap-2">
             <ImageIcon className="h-4 w-4 text-brand-500" /> Branding &amp; Images
           </h2>
           <div className="grid grid-cols-1 sm:grid-cols-2 gap-6">
@@ -228,8 +273,8 @@ export default function AdminSettingsPage() {
         </Section>
 
         {/* ── Payment & Delivery ─────────────────────────────────────────── */}
-        <div className="bg-white rounded-xl border border-gray-100 p-6 mb-5">
-          <h2 className="text-sm font-bold text-gray-900 mb-4 flex items-center gap-2">
+        <div className="bg-white dark:bg-dark-800 rounded-xl border border-gray-100 dark:border-dark-700 p-6 mb-5">
+          <h2 className="text-sm font-bold text-gray-900 dark:text-gray-50 mb-4 flex items-center gap-2">
             <Building2 className="h-4 w-4 text-brand-500" /> Payment &amp; Delivery
           </h2>
           <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">

@@ -10,6 +10,10 @@ interface LogoProps {
   size?: 'sm' | 'md' | 'lg';
   variant?: 'full' | 'icon';
   className?: string;
+  /** Render the fallback wordmark in light text — for use on a permanently
+   *  dark surface (e.g. the admin sidebar), independent of the app-wide
+   *  light/dark mode toggle. */
+  onDark?: boolean;
 }
 
 const sizeMap = {
@@ -22,7 +26,7 @@ const sizeMap = {
 let _cachedLogoUrl: string | null | undefined = undefined;
 let _cachedFaviconUrl: string | null | undefined = undefined;
 
-export default function Logo({ size = 'md', variant = 'full', className = '' }: LogoProps) {
+export default function Logo({ size = 'md', variant = 'full', className = '', onDark = false }: LogoProps) {
   const [logoUrl, setLogoUrl] = useState<string | null>(_cachedLogoUrl ?? null);
   const { img, text, sub } = sizeMap[size];
 
@@ -58,7 +62,7 @@ export default function Logo({ size = 'md', variant = 'full', className = '' }: 
 
       {variant === 'full' && !logoUrl && (
         <div className="flex flex-col leading-none">
-          <span className={`font-extrabold tracking-tight text-gray-900 ${text}`}>PARTORA</span>
+          <span className={`font-extrabold tracking-tight ${onDark ? 'text-white' : 'text-gray-900 dark:text-gray-50'} ${text}`}>PARTORA</span>
           <span className={`font-medium tracking-widest text-brand-500 uppercase mt-0.5 ${sub}`}>Automotive Parts</span>
         </div>
       )}

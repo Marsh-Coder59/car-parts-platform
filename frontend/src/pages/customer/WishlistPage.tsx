@@ -37,7 +37,7 @@ export default function WishlistPage() {
   return (
     <div className="max-w-4xl mx-auto px-4 sm:px-6 py-8">
       <div className="flex items-center justify-between mb-6">
-        <h1 className="text-2xl font-bold text-gray-900">Wishlist ({items.length})</h1>
+        <h1 className="text-2xl font-bold text-gray-900 dark:text-gray-50">Wishlist ({items.length})</h1>
         {items.length > 0 && (
           <button onClick={clearAll} className="text-sm text-red-500 hover:text-red-700 transition-colors">Clear all</button>
         )}
@@ -54,9 +54,9 @@ export default function WishlistPage() {
       ) : (
         <div className="grid grid-cols-2 sm:grid-cols-3 md:grid-cols-4 gap-4">
           {items.map(item => (
-            <div key={item.id} className="bg-white rounded-xl border border-gray-100 overflow-hidden group">
+            <div key={item.id} className="bg-white dark:bg-dark-800 rounded-xl border border-gray-100 dark:border-dark-700 overflow-hidden group">
               <Link to={`/products/${item.product_id}`}>
-                <div className="aspect-square bg-gray-50 flex items-center justify-center text-gray-200">
+                <div className="aspect-square bg-gray-50 dark:bg-dark-900 flex items-center justify-center text-gray-200">
                   {item.image ? (
                     <img src={resolveImageUrl(item.image)} alt={item.product_name} onError={onImageError} className="w-full h-full object-cover" />
                   ) : (
@@ -66,10 +66,10 @@ export default function WishlistPage() {
               </Link>
               <div className="p-3">
                 <Link to={`/products/${item.product_id}`}>
-                  <p className="text-sm font-semibold text-gray-900 line-clamp-2 hover:text-brand-600 transition-colors mb-1">{item.product_name}</p>
+                  <p className="text-sm font-semibold text-gray-900 dark:text-gray-50 line-clamp-2 hover:text-brand-600 transition-colors mb-1">{item.product_name}</p>
                 </Link>
                 <div className="flex items-center justify-between">
-                  <p className="text-sm font-bold text-gray-900">{formatCurrency(item.price)}</p>
+                  <p className="text-sm font-bold text-gray-900 dark:text-gray-50">{formatCurrency(item.price)}</p>
                   <StockBadge available={item.status === 'ACTIVE' ? 1 : 0} />
                 </div>
                 <button onClick={() => remove(item.product_id)}

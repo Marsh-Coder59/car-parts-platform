@@ -16,6 +16,7 @@ export interface User {
   email_verified: boolean;
   created_at: string;
   last_login_at?: string;
+  theme_preference?: 'light' | 'dark';
 }
 
 export interface AuthUser {
@@ -380,6 +381,18 @@ export interface DashboardData {
   pending_payments: number;
   pending_deliveries: number;
   customer_count: number;
+  total_products: number;
+  active_products: number;
+  pending_orders: number;
+  returns_refunds_count: number;
+  deltas_30d: {
+    total_products: number;
+    active_products: number;
+    total_orders: number;
+    pending_orders: number;
+    total_sales: number;
+    customer_count: number;
+  };
   low_stock_products: Array<{
     product_id: number;
     name: string;

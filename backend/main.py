@@ -73,50 +73,30 @@ def hash_token(token: str) -> str:
     return hashlib.sha256(token.encode()).hexdigest()
 
 
+# ============================================================
+# FASTAPI APPLICATION
+# ============================================================
 app = FastAPI(
     title="CarParts API",
     description="Production backend for CarParts e-commerce marketplace",
-    version="2.0.0",
+    version="2.0.0"
 )
 
-# ============================================================
-# CORS CONFIGURATION
-# ============================================================
-DEFAULT_ALLOWED_ORIGINS = [
-    "http://localhost:3000",
-    "http://localhost:5173",
-    "http://localhost:5174",
-    "https://car-parts-platform-2.onrender.com",
-]
 
-allowed_origins = [
-    origin.strip().rstrip("/")
-    for origin in os.getenv(
-        "ALLOWED_ORIGINS",
-        ",".join(DEFAULT_ALLOWED_ORIGINS),
-    ).split(",")
-    if origin.strip()
-]
 
 app.add_middleware(
     CORSMiddleware,
-    allow_origins=allowed_origins,
+    allow_origins=os.getenv("ALLOWED_ORIGINS", "http://localhost:3000,http://localhost:5173,http://localhost:5174").split(","),
     allow_credentials=True,
     allow_methods=["*"],
     allow_headers=["*"],
 )
 
-# ============================================================
-# STATIC FILES (AVATARS, PRODUCT IMAGES, SETTINGS IMAGES)
-# ============================================================
+# Serve uploaded static files (avatars, product images, settings images)
 _STATIC_DIR = os.path.join(os.path.dirname(__file__), "static")
 os.makedirs(_STATIC_DIR, exist_ok=True)
+app.mount("/static", StaticFiles(directory=_STATIC_DIR), name="static")
 
-app.mount(
-    "/static",
-    StaticFiles(directory=_STATIC_DIR),
-    name="static",
-)
 
 # ============================================================
 # DECIMAL HELPERS
@@ -349,6 +329,17 @@ class ProfileUpdate(BaseModel):
     first_name: Optional[str] = None
     last_name: Optional[str] = None
     phone: Optional[str] = None
+
+
+class ThemeUpdate(BaseModel):
+    theme: str
+
+    @field_validator("theme")
+    @classmethod
+    def validate_theme(cls, v):
+        if v not in ("light", "dark"):
+            raise ValueError("theme must be 'light' or 'dark'")
+        return v
 
 
 class ForgotPasswordRequest(BaseModel):
@@ -760,7 +751,7 @@ def login(credentials: UserLogin, request: Request, response: Response):
         cur = conn.cursor()
 
         cur.execute(
-            "SELECT id, first_name, last_name, email, password_hash, role, status FROM users WHERE email = %s",
+            "SELECT id, first_name, last_name, email, password_hash, role, status, theme_preference FROM users WHERE email = %s",
             (credentials.email.lower(),),
         )
         row = cur.fetchone()
@@ -771,7 +762,7 @@ def login(credentials: UserLogin, request: Request, response: Response):
             verify_password(credentials.password, dummy_hash)
             raise HTTPException(status_code=401, detail="Invalid email or password")
 
-        user_id, first_name, last_name, email, password_hash, role, status = row
+        user_id, first_name, last_name, email, password_hash, role, status, theme_preference = row
 
         if not verify_password(credentials.password, password_hash):
             write_audit_log(cur, user_id, "LOGIN_FAILED", "users", user_id,
@@ -805,20 +796,35 @@ def login(credentials: UserLogin, request: Request, response: Response):
         cur.close()
 
         is_prod = ENVIRONMENT == "production"
+        # Cross-origin deployments (e.g. frontend on one Render service,
+        # backend on another — different hostnames even though both are
+        # "onrender.com") need SameSite=None for the browser to send this
+        # cookie back on XHR/fetch requests at all; SameSite=Lax (the old
+        # fixed value here) is silently dropped on cross-site AJAX calls,
+        # which looks exactly like "login succeeds but every request after
+        # it is 401" — the cookie was never actually being sent back.
+        # SameSite=None requires Secure=True (HTTPS), which is fine in
+        # production (Render terminates TLS) and in local dev we stay on
+        # Lax/non-secure since frontend+backend share an origin there via
+        # the Vite proxy.
         response.set_cookie(
             key=SESSION_COOKIE,
             value=token,
             httponly=True,
             secure=is_prod,
-            samesite="lax",
+            samesite="none" if is_prod else "lax",
             max_age=SESSION_EXPIRE_HOURS * 3600,
             path="/",
         )
 
         return {
             "message": "Login successful",
+            # theme_preference is returned here (not just from /api/auth/me) so
+            # the frontend can apply the account's saved theme immediately on
+            # login, before any extra round trip — avoids a flash of the
+            # wrong theme right after signing in.
             "user": {"id": user_id, "first_name": first_name, "last_name": last_name,
-                     "email": email, "role": role},
+                     "email": email, "role": role, "theme_preference": theme_preference},
             "token": token  # also return for API clients using Bearer
         }
     except HTTPException:
@@ -872,7 +878,16 @@ def logout(
         if conn:
             conn.close()
 
-    response.delete_cookie(SESSION_COOKIE)
+    # Attributes must match how the cookie was originally set, or some
+    # browsers won't actually clear it (a delete_cookie() with mismatched
+    # SameSite/Secure can be a silent no-op).
+    is_prod = ENVIRONMENT == "production"
+    response.delete_cookie(
+        SESSION_COOKIE,
+        path="/",
+        secure=is_prod,
+        samesite="none" if is_prod else "lax",
+    )
     return {"message": "Logged out successfully"}
 
 
@@ -883,7 +898,7 @@ def me(current_user: dict = Depends(get_current_user)):
         conn = get_db_connection()
         cur = conn.cursor()
         cur.execute(
-            "SELECT id, first_name, last_name, email, phone, role, status, email_verified, created_at, avatar_url FROM users WHERE id = %s",
+            "SELECT id, first_name, last_name, email, phone, role, status, email_verified, created_at, avatar_url, theme_preference FROM users WHERE id = %s",
             (current_user["user_id"],),
         )
         row = cur.fetchone()
@@ -900,7 +915,8 @@ def me(current_user: dict = Depends(get_current_user)):
         "id": row[0], "first_name": row[1], "last_name": row[2], "email": row[3],
         "phone": row[4], "role": row[5], "status": row[6],
         "email_verified": row[7], "created_at": safe_json(row[8]),
-        "avatar_url": row[9] if len(row) > 9 else None
+        "avatar_url": row[9] if len(row) > 9 else None,
+        "theme_preference": row[10] if len(row) > 10 else "light",
     }
 
 
@@ -1095,6 +1111,43 @@ def change_password(
 @app.get("/api/users/profile")
 def get_profile(current_user: dict = Depends(get_current_user)):
     return me(current_user)
+
+
+@app.patch("/api/users/theme")
+def update_theme(body: ThemeUpdate, current_user: dict = Depends(get_current_user)):
+    """
+    Persist the signed-in account's light/dark preference. Available to any
+    authenticated role (customer, staff, admin) — the preference is tied to
+    the account, not to any one dashboard, so toggling it in one place (e.g.
+    the admin header) is expected to carry over everywhere that account
+    signs in, including the next session.
+    """
+    conn = None
+    try:
+        conn = get_db_connection()
+        cur = conn.cursor()
+        cur.execute(
+            "UPDATE users SET theme_preference = %s, updated_at = NOW() WHERE id = %s RETURNING theme_preference",
+            (body.theme, current_user["user_id"]),
+        )
+        row = cur.fetchone()
+        conn.commit()
+        cur.close()
+        if not row:
+            raise HTTPException(status_code=404, detail="User not found")
+        return {"theme_preference": row[0]}
+    except HTTPException:
+        if conn:
+            conn.rollback()
+        raise
+    except Exception:
+        if conn:
+            conn.rollback()
+        logger.exception("update_theme error")
+        raise HTTPException(status_code=500, detail="Could not update theme preference")
+    finally:
+        if conn:
+            conn.close()
 
 
 @app.patch("/api/users/profile")
@@ -4399,7 +4452,12 @@ def admin_dashboard(current_user: dict = Depends(require_staff_or_admin)):
             WHERE i.quantity - i.reserved_quantity <= i.reorder_level
             ORDER BY available ASC LIMIT 10
         """)
-        low_stock = [{"id": r[0], "name": r[1], "sku": r[2], "available": r[3], "reorder_level": r[4]} for r in cur.fetchall()]
+        # Field is named product_id (not id) to match what the admin
+        # dashboard's low-stock panel keys off — it was previously called
+        # "id" here while the frontend read "product_id", so every row's
+        # React key silently resolved to undefined (no crash, but broken
+        # list reconciliation / console warnings).
+        low_stock = [{"product_id": r[0], "name": r[1], "sku": r[2], "available": r[3], "reorder_level": r[4]} for r in cur.fetchall()]
 
         cur.execute("SELECT COUNT(*) FROM users WHERE role='CUSTOMER'")
         customer_count = cur.fetchone()[0]
@@ -4414,6 +4472,49 @@ def admin_dashboard(current_user: dict = Depends(require_staff_or_admin)):
             for r in cur.fetchall()
         ]
 
+        # ---- Additional overview card data (products, pending orders,
+        # returns/refunds needing attention) and real month-over-month
+        # deltas, all derived from actual created_at timestamps —
+        # no invented figures. For counts that can both increase and
+        # decrease over time (e.g. ACTIVE products), comparing against
+        # "rows that already existed 30 days ago, filtered by their
+        # CURRENT status" is an approximation (it can't see past status
+        # changes, since there's no history table) rather than a precise
+        # point-in-time snapshot; it's still a real, data-derived figure,
+        # just noted here for transparency.
+        cur.execute("SELECT COUNT(*) FROM products")
+        total_products = cur.fetchone()[0]
+        cur.execute("SELECT COUNT(*) FROM products WHERE created_at <= NOW() - INTERVAL '30 days'")
+        total_products_30d_ago = cur.fetchone()[0]
+
+        cur.execute("SELECT COUNT(*) FROM products WHERE status = 'ACTIVE'")
+        active_products = cur.fetchone()[0]
+        cur.execute("SELECT COUNT(*) FROM products WHERE status = 'ACTIVE' AND created_at <= NOW() - INTERVAL '30 days'")
+        active_products_30d_ago = cur.fetchone()[0]
+
+        cur.execute("SELECT COUNT(*) FROM orders WHERE order_status = 'PENDING'")
+        pending_orders = cur.fetchone()[0]
+        cur.execute("SELECT COUNT(*) FROM orders WHERE order_status = 'PENDING' AND created_at <= NOW() - INTERVAL '30 days'")
+        pending_orders_30d_ago = cur.fetchone()[0]
+
+        cur.execute("SELECT COALESCE(SUM(total_amount),0) FROM orders WHERE order_status NOT IN ('CANCELLED') AND created_at <= NOW() - INTERVAL '30 days'")
+        total_sales_30d_ago = cur.fetchone()[0]
+
+        cur.execute("SELECT COUNT(*) FROM users WHERE role='CUSTOMER' AND created_at <= NOW() - INTERVAL '30 days'")
+        customer_count_30d_ago = cur.fetchone()[0]
+
+        cur.execute("SELECT COUNT(*) FROM returns WHERE status = 'PENDING'")
+        pending_returns = cur.fetchone()[0]
+        cur.execute("SELECT COUNT(*) FROM refunds WHERE status = 'PENDING'")
+        pending_refunds = cur.fetchone()[0]
+
+        def pct_change(current, past):
+            current = float(current or 0)
+            past = float(past or 0)
+            if past == 0:
+                return 100.0 if current > 0 else 0.0
+            return round(((current - past) / past) * 100, 1)
+
         cur.close()
 
         return {
@@ -4425,6 +4526,18 @@ def admin_dashboard(current_user: dict = Depends(require_staff_or_admin)):
             "customer_count": customer_count,
             "low_stock_products": low_stock,
             "recent_orders": recent_orders_list,
+            "total_products": total_products,
+            "active_products": active_products,
+            "pending_orders": pending_orders,
+            "returns_refunds_count": pending_returns + pending_refunds,
+            "deltas_30d": {
+                "total_products": pct_change(total_products, total_products_30d_ago),
+                "active_products": pct_change(active_products, active_products_30d_ago),
+                "total_orders": pct_change(orders_row[0], orders_row[0] - recent_orders),
+                "pending_orders": pct_change(pending_orders, pending_orders_30d_ago),
+                "total_sales": pct_change(to_decimal(orders_row[1]), total_sales_30d_ago),
+                "customer_count": pct_change(customer_count, customer_count_30d_ago),
+            },
         }
     except Exception:
         logger.exception("admin_dashboard error")

@@ -34,14 +34,14 @@ export default function ResetPasswordPage() {
   };
 
   return (
-    <div className="min-h-screen bg-gray-50 flex items-center justify-center px-4 py-12">
+    <div className="min-h-screen bg-gray-50 dark:bg-dark-900 flex items-center justify-center px-4 py-12">
       <div className="w-full max-w-md">
         <div className="text-center mb-8">
           <div className="flex justify-center mb-4"><Logo size="lg" /></div>
-          <h1 className="text-2xl font-bold text-gray-900">Set new password</h1>
+          <h1 className="text-2xl font-bold text-gray-900 dark:text-gray-50">Set new password</h1>
         </div>
-        <div className="bg-white rounded-2xl shadow-sm border border-gray-100 p-8">
-          {error && <div className="mb-4 p-3 bg-red-50 border border-red-200 rounded-lg text-sm text-red-700">{error}</div>}
+        <div className="bg-white dark:bg-dark-800 rounded-2xl shadow-sm border border-gray-100 dark:border-dark-700 p-8">
+          {error && <div className="mb-4 p-3 bg-red-50 dark:bg-red-900/20 border border-red-200 rounded-lg text-sm text-red-700">{error}</div>}
           {!token ? (
             <p className="text-sm text-red-600">Invalid reset link. <Link to="/forgot-password" className="underline">Request a new one</Link>.</p>
           ) : (

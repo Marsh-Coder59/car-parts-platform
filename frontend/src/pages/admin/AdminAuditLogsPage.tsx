@@ -27,7 +27,7 @@ export default function AdminAuditLogsPage() {
   return (
     <div>
       <div className="flex items-center justify-between mb-6">
-        <h1 className="text-2xl font-extrabold text-gray-900">Audit Logs</h1>
+        <h1 className="text-2xl font-extrabold text-gray-900 dark:text-gray-50">Audit Logs</h1>
         <Select value={entityType} onChange={e => { setEntityType(e.target.value); setPage(1); }} className="w-48">
           {ENTITY_TYPES.map(t => <option key={t} value={t}>{t || 'All Entities'}</option>)}
         </Select>
@@ -37,27 +37,27 @@ export default function AdminAuditLogsPage() {
         <EmptyState title="No audit logs" description="Actions will be logged here." />
       ) : (
         <>
-          <div className="bg-white rounded-xl border border-gray-100 overflow-hidden">
+          <div className="bg-white dark:bg-dark-800 rounded-xl border border-gray-100 dark:border-dark-700 overflow-hidden">
             <div className="overflow-x-auto">
               <table className="w-full text-xs">
-                <thead className="bg-gray-50 border-b border-gray-100">
+                <thead className="bg-gray-50 dark:bg-dark-900 border-b border-gray-100 dark:border-dark-700">
                   <tr>
                     {['Time', 'Actor', 'Action', 'Entity', 'Entity ID', 'IP'].map(h => (
-                      <th key={h} className="text-left px-4 py-3 font-semibold text-gray-500 uppercase tracking-wide">{h}</th>
+                      <th key={h} className="text-left px-4 py-3 font-semibold text-gray-500 dark:text-gray-400 uppercase tracking-wide">{h}</th>
                     ))}
                   </tr>
                 </thead>
-                <tbody className="divide-y divide-gray-50">
+                <tbody className="divide-y divide-gray-50 dark:divide-dark-700">
                   {logs.map(log => (
-                    <tr key={log.id} className="hover:bg-gray-50">
-                      <td className="px-4 py-2.5 text-gray-400 whitespace-nowrap">{formatDateTime(log.created_at)}</td>
-                      <td className="px-4 py-2.5 text-gray-600 truncate max-w-[140px]">{log.user_email || `#${log.user_id}`}</td>
+                    <tr key={log.id} className="hover:bg-gray-50 dark:hover:bg-dark-700">
+                      <td className="px-4 py-2.5 text-gray-400 dark:text-gray-500 whitespace-nowrap">{formatDateTime(log.created_at)}</td>
+                      <td className="px-4 py-2.5 text-gray-600 dark:text-gray-300 truncate max-w-[140px]">{log.user_email || `#${log.user_id}`}</td>
                       <td className="px-4 py-2.5">
-                        <span className="font-semibold text-gray-900">{log.action}</span>
+                        <span className="font-semibold text-gray-900 dark:text-gray-50">{log.action}</span>
                       </td>
-                      <td className="px-4 py-2.5 text-gray-500">{log.entity_type || '—'}</td>
-                      <td className="px-4 py-2.5 font-mono text-gray-400">{log.entity_id || '—'}</td>
-                      <td className="px-4 py-2.5 text-gray-400">{log.ip_address || '—'}</td>
+                      <td className="px-4 py-2.5 text-gray-500 dark:text-gray-400">{log.entity_type || '—'}</td>
+                      <td className="px-4 py-2.5 font-mono text-gray-400 dark:text-gray-500">{log.entity_id || '—'}</td>
+                      <td className="px-4 py-2.5 text-gray-400 dark:text-gray-500">{log.ip_address || '—'}</td>
                     </tr>
                   ))}
                 </tbody>

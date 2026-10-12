@@ -84,11 +84,11 @@ export default function AdminInventoryPage() {
   return (
     <div>
       <div className="flex items-center justify-between mb-6">
-        <h1 className="text-2xl font-extrabold text-gray-900">Inventory</h1>
+        <h1 className="text-2xl font-extrabold text-gray-900 dark:text-gray-50">Inventory</h1>
         <div className="flex items-center gap-2">
           <button
             onClick={() => setShowLowStock(!showLowStock)}
-            className={`flex items-center gap-2 px-4 py-2 rounded-lg text-sm font-medium border transition-colors ${showLowStock ? 'bg-red-50 border-red-200 text-red-700' : 'border-gray-200 text-gray-600 hover:bg-gray-50'}`}
+            className={`flex items-center gap-2 px-4 py-2 rounded-lg text-sm font-medium border transition-colors ${showLowStock ? 'bg-red-50 dark:bg-red-900/20 border-red-200 text-red-700' : 'border-gray-200 dark:border-dark-600 text-gray-600 dark:text-gray-300 hover:bg-gray-50 dark:hover:bg-dark-700'}`}
           >
             <AlertTriangle className="h-4 w-4" />
             {showLowStock ? 'Show All' : 'Low Stock Only'}
@@ -100,32 +100,32 @@ export default function AdminInventoryPage() {
         <EmptyState title={showLowStock ? 'No low-stock products' : 'No inventory records'}
           description={showLowStock ? 'All products are well stocked.' : 'Add products first.'} />
       ) : (
-        <div className="bg-white rounded-xl border border-gray-100 overflow-hidden">
+        <div className="bg-white dark:bg-dark-800 rounded-xl border border-gray-100 dark:border-dark-700 overflow-hidden">
           <div className="overflow-x-auto">
             <table className="w-full text-sm">
-              <thead className="bg-gray-50 border-b border-gray-100">
+              <thead className="bg-gray-50 dark:bg-dark-900 border-b border-gray-100 dark:border-dark-700">
                 <tr>
                   {['Product', 'SKU', 'In Stock', 'Reserved', 'Available', 'Reorder At', 'Updated', 'Actions'].map(h => (
-                    <th key={h} className="text-left px-4 py-3 text-xs font-semibold text-gray-500 uppercase tracking-wide whitespace-nowrap">{h}</th>
+                    <th key={h} className="text-left px-4 py-3 text-xs font-semibold text-gray-500 dark:text-gray-400 uppercase tracking-wide whitespace-nowrap">{h}</th>
                   ))}
                 </tr>
               </thead>
-              <tbody className="divide-y divide-gray-50">
+              <tbody className="divide-y divide-gray-50 dark:divide-dark-700">
                 {displayList.map(item => {
                   const isLow = item.available_quantity <= item.reorder_level;
                   return (
-                    <tr key={item.id} className={`hover:bg-gray-50 transition-colors ${isLow ? 'bg-red-50/30' : ''}`}>
-                      <td className="px-4 py-3 font-medium text-gray-900">{item.product_name}</td>
-                      <td className="px-4 py-3 font-mono text-xs text-gray-500">{item.sku || '—'}</td>
-                      <td className="px-4 py-3 font-bold text-gray-900">{item.quantity}</td>
-                      <td className="px-4 py-3 text-gray-500">{item.reserved_quantity}</td>
+                    <tr key={item.id} className={`hover:bg-gray-50 dark:hover:bg-dark-700 transition-colors ${isLow ? 'bg-red-50/30' : ''}`}>
+                      <td className="px-4 py-3 font-medium text-gray-900 dark:text-gray-50">{item.product_name}</td>
+                      <td className="px-4 py-3 font-mono text-xs text-gray-500 dark:text-gray-400">{item.sku || '—'}</td>
+                      <td className="px-4 py-3 font-bold text-gray-900 dark:text-gray-50">{item.quantity}</td>
+                      <td className="px-4 py-3 text-gray-500 dark:text-gray-400">{item.reserved_quantity}</td>
                       <td className="px-4 py-3">
                         <span className={`font-bold ${item.available_quantity <= 0 ? 'text-red-600' : isLow ? 'text-orange-600' : 'text-green-700'}`}>
                           {item.available_quantity}
                         </span>
                       </td>
-                      <td className="px-4 py-3 text-gray-400">{item.reorder_level}</td>
-                      <td className="px-4 py-3 text-xs text-gray-400 whitespace-nowrap">{formatDateTime(item.updated_at)}</td>
+                      <td className="px-4 py-3 text-gray-400 dark:text-gray-500">{item.reorder_level}</td>
+                      <td className="px-4 py-3 text-xs text-gray-400 dark:text-gray-500 whitespace-nowrap">{formatDateTime(item.updated_at)}</td>
                       <td className="px-4 py-3">
                         <div className="flex gap-1">
                           <button onClick={() => openModal('stock-in', item)}
@@ -133,11 +133,11 @@ export default function AdminInventoryPage() {
                             <TrendingUp className="h-3 w-3" /> In
                           </button>
                           <button onClick={() => openModal('stock-out', item)}
-                            className="flex items-center gap-1 px-2 py-1 text-xs font-semibold text-red-700 bg-red-50 hover:bg-red-100 rounded-lg transition-colors whitespace-nowrap">
+                            className="flex items-center gap-1 px-2 py-1 text-xs font-semibold text-red-700 bg-red-50 dark:bg-red-900/20 hover:bg-red-100 rounded-lg transition-colors whitespace-nowrap">
                             <TrendingDown className="h-3 w-3" /> Out
                           </button>
                           <button onClick={() => openModal('adjust', item)}
-                            className="flex items-center gap-1 px-2 py-1 text-xs font-semibold text-gray-700 bg-gray-100 hover:bg-gray-200 rounded-lg transition-colors">
+                            className="flex items-center gap-1 px-2 py-1 text-xs font-semibold text-gray-700 dark:text-gray-200 bg-gray-100 dark:bg-dark-700 hover:bg-gray-200 rounded-lg transition-colors">
                             <SlidersHorizontal className="h-3 w-3" /> Adjust
                           </button>
                         </div>
@@ -155,9 +155,9 @@ export default function AdminInventoryPage() {
         title={modal === 'stock-in' ? 'Add Stock' : modal === 'stock-out' ? 'Remove Stock' : 'Adjust Inventory'}>
         <form onSubmit={handleSubmit(onSubmit)} className="p-6 space-y-4">
           {selectedProduct && (
-            <div className="p-3 bg-gray-50 rounded-lg text-sm">
-              <p className="font-semibold text-gray-900">{selectedProduct.product_name}</p>
-              <p className="text-gray-500">Current: {selectedProduct.quantity} in stock · {selectedProduct.available_quantity} available</p>
+            <div className="p-3 bg-gray-50 dark:bg-dark-900 rounded-lg text-sm">
+              <p className="font-semibold text-gray-900 dark:text-gray-50">{selectedProduct.product_name}</p>
+              <p className="text-gray-500 dark:text-gray-400">Current: {selectedProduct.quantity} in stock · {selectedProduct.available_quantity} available</p>
             </div>
           )}
 

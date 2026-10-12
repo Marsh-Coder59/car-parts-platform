@@ -39,13 +39,13 @@ function LogoUpload({ currentUrl, onUploaded }: { currentUrl?: string | null; on
 
   return (
     <div>
-      <label className="block text-sm font-medium text-gray-700 mb-1.5">Logo</label>
+      <label className="block text-sm font-medium text-gray-700 dark:text-gray-200 mb-1.5">Logo</label>
       <div className="flex items-center gap-3">
-        <div className="w-14 h-14 rounded-lg border border-gray-200 bg-gray-50 flex items-center justify-center overflow-hidden">
+        <div className="w-14 h-14 rounded-lg border border-gray-200 dark:border-dark-600 bg-gray-50 dark:bg-dark-900 flex items-center justify-center overflow-hidden">
           {preview ? <img src={preview} alt="logo" className="w-full h-full object-contain" /> : <ImageIcon className="h-6 w-6 text-gray-300" />}
         </div>
         <button type="button" onClick={() => ref.current?.click()} disabled={uploading}
-          className="flex items-center gap-2 px-3 py-1.5 text-sm border border-gray-300 rounded-lg hover:bg-gray-50 disabled:opacity-50">
+          className="flex items-center gap-2 px-3 py-1.5 text-sm border border-gray-300 rounded-lg hover:bg-gray-50 dark:hover:bg-dark-700 disabled:opacity-50">
           <Upload className="h-4 w-4" />{uploading ? 'Uploading…' : preview ? 'Replace' : 'Upload Logo'}
         </button>
       </div>
@@ -92,41 +92,41 @@ export default function AdminBrandsPage() {
   return (
     <div>
       <div className="flex items-center justify-between mb-6">
-        <h1 className="text-2xl font-extrabold text-gray-900">Brands</h1>
+        <h1 className="text-2xl font-extrabold text-gray-900 dark:text-gray-50">Brands</h1>
         <Button size="sm" onClick={openCreate} leftIcon={<Plus className="h-4 w-4" />}>Add Brand</Button>
       </div>
 
       {loading ? <SkeletonTable rows={6} cols={4} /> : brands.length === 0 ? (
         <EmptyState title="No brands" description="Create brands for your products." action={<Button onClick={openCreate}>Add Brand</Button>} />
       ) : (
-        <div className="bg-white rounded-xl border border-gray-100 overflow-hidden">
+        <div className="bg-white dark:bg-dark-800 rounded-xl border border-gray-100 dark:border-dark-700 overflow-hidden">
           <table className="w-full text-sm">
-            <thead className="bg-gray-50 border-b border-gray-100">
+            <thead className="bg-gray-50 dark:bg-dark-900 border-b border-gray-100 dark:border-dark-700">
               <tr>{['Brand', 'Slug', 'Active', 'Actions'].map(h => (
-                <th key={h} className="text-left px-4 py-3 text-xs font-semibold text-gray-500 uppercase tracking-wide">{h}</th>
+                <th key={h} className="text-left px-4 py-3 text-xs font-semibold text-gray-500 dark:text-gray-400 uppercase tracking-wide">{h}</th>
               ))}</tr>
             </thead>
-            <tbody className="divide-y divide-gray-50">
+            <tbody className="divide-y divide-gray-50 dark:divide-dark-700">
               {brands.map(b => (
-                <tr key={b.id} className="hover:bg-gray-50">
+                <tr key={b.id} className="hover:bg-gray-50 dark:hover:bg-dark-700">
                   <td className="px-4 py-3">
                     <div className="flex items-center gap-3">
                       {b.logo_url
-                        ? <img src={resolveImageUrl(b.logo_url)} alt="" onError={onImageError} className="w-8 h-8 rounded object-contain bg-gray-50" />
-                        : <div className="w-8 h-8 rounded bg-gray-100 flex items-center justify-center text-xs font-bold text-gray-400">{b.name[0]}</div>}
-                      <span className="font-medium text-gray-900">{b.name}</span>
+                        ? <img src={resolveImageUrl(b.logo_url)} alt="" onError={onImageError} className="w-8 h-8 rounded object-contain bg-gray-50 dark:bg-dark-900" />
+                        : <div className="w-8 h-8 rounded bg-gray-100 dark:bg-dark-700 flex items-center justify-center text-xs font-bold text-gray-400 dark:text-gray-500">{b.name[0]}</div>}
+                      <span className="font-medium text-gray-900 dark:text-gray-50">{b.name}</span>
                     </div>
                   </td>
-                  <td className="px-4 py-3 text-gray-500 font-mono text-xs">{b.slug || '—'}</td>
+                  <td className="px-4 py-3 text-gray-500 dark:text-gray-400 font-mono text-xs">{b.slug || '—'}</td>
                   <td className="px-4 py-3">
-                    <span className={`text-xs font-medium px-2 py-0.5 rounded-full ${b.is_active ? 'bg-green-50 text-green-700' : 'bg-gray-100 text-gray-500'}`}>
+                    <span className={`text-xs font-medium px-2 py-0.5 rounded-full ${b.is_active ? 'bg-green-50 text-green-700' : 'bg-gray-100 dark:bg-dark-700 text-gray-500 dark:text-gray-400'}`}>
                       {b.is_active ? 'Active' : 'Inactive'}
                     </span>
                   </td>
                   <td className="px-4 py-3">
                     <div className="flex items-center gap-2">
-                      <button onClick={() => openEdit(b)} className="p-1.5 text-gray-400 hover:text-brand-600 hover:bg-brand-50 rounded transition-colors"><Edit2 className="h-4 w-4" /></button>
-                      <button onClick={() => deleteBrand(b.id, b.name)} className="p-1.5 text-gray-400 hover:text-red-600 hover:bg-red-50 rounded transition-colors"><Trash2 className="h-4 w-4" /></button>
+                      <button onClick={() => openEdit(b)} className="p-1.5 text-gray-400 dark:text-gray-500 hover:text-brand-600 hover:bg-brand-50 dark:hover:bg-brand-900/30 rounded transition-colors"><Edit2 className="h-4 w-4" /></button>
+                      <button onClick={() => deleteBrand(b.id, b.name)} className="p-1.5 text-gray-400 dark:text-gray-500 hover:text-red-600 hover:bg-red-50 dark:hover:bg-red-900/30 rounded transition-colors"><Trash2 className="h-4 w-4" /></button>
                     </div>
                   </td>
                 </tr>

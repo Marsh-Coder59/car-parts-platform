@@ -50,32 +50,32 @@ export default function RegisterPage() {
 
   if (success) {
     return (
-      <div className="min-h-screen bg-gray-50 flex items-center justify-center px-4">
+      <div className="min-h-screen bg-gray-50 dark:bg-dark-900 flex items-center justify-center px-4">
         <div className="text-center">
           <div className="w-16 h-16 bg-green-100 rounded-full flex items-center justify-center mx-auto mb-4">
             <span className="text-3xl">✓</span>
           </div>
-          <h2 className="text-xl font-bold text-gray-900">Account Created!</h2>
-          <p className="text-sm text-gray-500 mt-2">Redirecting you to sign in…</p>
+          <h2 className="text-xl font-bold text-gray-900 dark:text-gray-50">Account Created!</h2>
+          <p className="text-sm text-gray-500 dark:text-gray-400 mt-2">Redirecting you to sign in…</p>
         </div>
       </div>
     );
   }
 
   return (
-    <div className="min-h-screen bg-gray-50 flex items-center justify-center px-4 py-12">
+    <div className="min-h-screen bg-gray-50 dark:bg-dark-900 flex items-center justify-center px-4 py-12">
       <div className="w-full max-w-md">
         <div className="text-center mb-8">
           <div className="flex justify-center mb-4">
             <Logo size="lg" />
           </div>
-          <h1 className="text-2xl font-bold text-gray-900">Create your account</h1>
-          <p className="text-sm text-gray-500 mt-1">Join Partora and start shopping</p>
+          <h1 className="text-2xl font-bold text-gray-900 dark:text-gray-50">Create your account</h1>
+          <p className="text-sm text-gray-500 dark:text-gray-400 mt-1">Join Partora and start shopping</p>
         </div>
 
-        <div className="bg-white rounded-2xl shadow-sm border border-gray-100 p-8">
+        <div className="bg-white dark:bg-dark-800 rounded-2xl shadow-sm border border-gray-100 dark:border-dark-700 p-8">
           {error && (
-            <div className="mb-4 p-3 bg-red-50 border border-red-200 rounded-lg text-sm text-red-700">{error}</div>
+            <div className="mb-4 p-3 bg-red-50 dark:bg-red-900/20 border border-red-200 rounded-lg text-sm text-red-700">{error}</div>
           )}
 
           <form onSubmit={handleSubmit(onSubmit)} className="space-y-4">
@@ -134,7 +134,7 @@ export default function RegisterPage() {
             </Button>
           </form>
 
-          <p className="text-center text-sm text-gray-500 mt-6">
+          <p className="text-center text-sm text-gray-500 dark:text-gray-400 mt-6">
             Already have an account?{' '}
             <Link to="/login" className="text-brand-600 hover:text-brand-700 font-semibold">Sign in</Link>
           </p>

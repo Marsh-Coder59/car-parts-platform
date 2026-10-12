@@ -33,7 +33,7 @@ export default function OrderConfirmationPage() {
   );
 
   if (!bankDetails) return (
-    <div className="max-w-2xl mx-auto px-4 py-16 text-center text-gray-500">
+    <div className="max-w-2xl mx-auto px-4 py-16 text-center text-gray-500 dark:text-gray-400">
       Order details not found. <Link to="/orders" className="text-brand-600 hover:underline">View my orders</Link>
     </div>
   );
@@ -48,34 +48,34 @@ export default function OrderConfirmationPage() {
         <div className="w-16 h-16 bg-green-100 rounded-full flex items-center justify-center mx-auto mb-4">
           <CheckCircle className="h-9 w-9 text-green-600" />
         </div>
-        <h1 className="text-2xl font-extrabold text-gray-900">Order Placed!</h1>
-        <p className="text-gray-500 mt-1">Order reference: <span className="font-semibold text-gray-900">{bankDetails.order_number}</span></p>
+        <h1 className="text-2xl font-extrabold text-gray-900 dark:text-gray-50">Order Placed!</h1>
+        <p className="text-gray-500 dark:text-gray-400 mt-1">Order reference: <span className="font-semibold text-gray-900 dark:text-gray-50">{bankDetails.order_number}</span></p>
       </div>
 
       {/* Amount summary */}
-      <div className="bg-white rounded-2xl border border-gray-100 p-6 mb-5">
-        <h2 className="text-base font-bold text-gray-900 mb-4">Payment Summary</h2>
+      <div className="bg-white dark:bg-dark-800 rounded-2xl border border-gray-100 dark:border-dark-700 p-6 mb-5">
+        <h2 className="text-base font-bold text-gray-900 dark:text-gray-50 mb-4">Payment Summary</h2>
         <div className="space-y-3">
           <div className="flex justify-between text-sm">
-            <span className="text-gray-600">Order Total</span>
-            <span className="font-semibold text-gray-900">{formatCurrency(bankDetails.total_amount)}</span>
+            <span className="text-gray-600 dark:text-gray-300">Order Total</span>
+            <span className="font-semibold text-gray-900 dark:text-gray-50">{formatCurrency(bankDetails.total_amount)}</span>
           </div>
           <div className="flex justify-between text-sm">
-            <span className="text-gray-600">Deposit Required (75%)</span>
+            <span className="text-gray-600 dark:text-gray-300">Deposit Required (75%)</span>
             <span className="font-bold text-brand-600 text-base">{formatCurrency(bankDetails.deposit_amount)}</span>
           </div>
           <div className="flex justify-between text-sm">
-            <span className="text-gray-600">Balance Due After Delivery (25%)</span>
-            <span className="font-semibold text-gray-900">{formatCurrency(bankDetails.balance_amount)}</span>
+            <span className="text-gray-600 dark:text-gray-300">Balance Due After Delivery (25%)</span>
+            <span className="font-semibold text-gray-900 dark:text-gray-50">{formatCurrency(bankDetails.balance_amount)}</span>
           </div>
         </div>
       </div>
 
       {/* Bank details */}
-      <div className="bg-white rounded-2xl border border-brand-100 p-6 mb-5">
+      <div className="bg-white dark:bg-dark-800 rounded-2xl border border-brand-100 p-6 mb-5">
         <div className="flex items-center gap-2 mb-4">
           <Building2 className="h-5 w-5 text-brand-500" />
-          <h2 className="text-base font-bold text-gray-900">Bank Transfer Details</h2>
+          <h2 className="text-base font-bold text-gray-900 dark:text-gray-50">Bank Transfer Details</h2>
         </div>
 
         {!hasBankDetails ? (
@@ -91,12 +91,12 @@ export default function OrderConfirmationPage() {
               { label: 'Branch', value: bankDetails.bank?.branch },
               { label: 'Reference', value: bankDetails.reference },
             ].filter(r => r.value).map(row => (
-              <div key={row.label} className="flex items-center justify-between p-3 bg-gray-50 rounded-lg">
+              <div key={row.label} className="flex items-center justify-between p-3 bg-gray-50 dark:bg-dark-900 rounded-lg">
                 <div>
-                  <p className="text-xs text-gray-500">{row.label}</p>
-                  <p className="text-sm font-semibold text-gray-900">{row.value}</p>
+                  <p className="text-xs text-gray-500 dark:text-gray-400">{row.label}</p>
+                  <p className="text-sm font-semibold text-gray-900 dark:text-gray-50">{row.value}</p>
                 </div>
-                <button onClick={() => copy(row.value!)} className="p-1.5 text-gray-400 hover:text-brand-500 transition-colors">
+                <button onClick={() => copy(row.value!)} className="p-1.5 text-gray-400 dark:text-gray-500 hover:text-brand-500 transition-colors">
                   <Copy className="h-4 w-4" />
                 </button>
               </div>
@@ -121,7 +121,7 @@ export default function OrderConfirmationPage() {
         <Link to={`/orders/${id}`} className="flex-1 text-center px-5 py-2.5 bg-brand-500 text-white font-semibold rounded-lg hover:bg-brand-600 transition-colors">
           Submit Payment Reference
         </Link>
-        <Link to="/orders" className="flex-1 text-center px-5 py-2.5 border border-gray-200 text-gray-700 font-medium rounded-lg hover:bg-gray-50 transition-colors">
+        <Link to="/orders" className="flex-1 text-center px-5 py-2.5 border border-gray-200 dark:border-dark-600 text-gray-700 dark:text-gray-200 font-medium rounded-lg hover:bg-gray-50 dark:hover:bg-dark-700 transition-colors">
           View My Orders
         </Link>
       </div>

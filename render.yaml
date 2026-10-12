@@ -1,0 +1,64 @@
+# Render Blueprint for the Partora backend + database.
+#
+# This deploys the FastAPI backend as its own web service with its own
+# Render-provided URL (e.g. https://partora-backend.onrender.com), separate
+# from the frontend you already deployed. Once this is live, point the
+# frontend at it — see SETUP_NOTE.md for the exact steps (there are two:
+# an env var on the frontend service, and one on this backend service).
+#
+# To use: in the Render dashboard, "New +" → "Blueprint", point it at this
+# repo. Render will create the database and web service below together.
+#
+# IMPORTANT — Render's free tier has an EPHEMERAL filesystem: anything
+# written to backend/static (product images, logos, avatars) is wiped on
+# every deploy and on every restart after idling. That's fine to get the
+# site working, but it is not durable storage for uploaded images in
+# production — see the "Persistent image storage" note in SETUP_NOTE.md
+# for what to do about that when you're ready (a Render persistent disk on
+# a paid plan, or migrating to object storage like S3/Cloudflare R2).
+
+databases:
+  - name: partora-db
+    plan: free
+    databaseName: partora_db
+    user: partora_user
+
+services:
+  - type: web
+    name: partora-backend
+    runtime: python
+    plan: free
+    rootDir: backend
+    buildCommand: pip install -r requirements.txt && python run_migrations.py
+    startCommand: uvicorn main:app --host 0.0.0.0 --port $PORT
+    envVars:
+      - key: DATABASE_URL
+        fromDatabase:
+          name: partora-db
+          property: connectionString
+      - key: ENVIRONMENT
+        value: production
+      - key: SECRET_KEY
+        generateValue: true
+      - key: SESSION_EXPIRE_HOURS
+        value: "24"
+      # Fill these in after both services exist — see SETUP_NOTE.md.
+      # Comma-separated, no spaces, no trailing slash.
+      - key: ALLOWED_ORIGINS
+        value: "https://car-parts-platform-2.onrender.com"
+      - key: FRONTEND_URL
+        value: "https://car-parts-platform-2.onrender.com"
+      - key: SMTP_HOST
+        value: ""
+      - key: SMTP_PORT
+        value: "587"
+      - key: SMTP_USER
+        value: ""
+      - key: SMTP_PASSWORD
+        sync: false
+      - key: SMTP_FROM
+        value: "noreply@partora.com"
+      - key: SMTP_FROM_NAME
+        value: "Partora"
+      - key: SMTP_TLS
+        value: "true"

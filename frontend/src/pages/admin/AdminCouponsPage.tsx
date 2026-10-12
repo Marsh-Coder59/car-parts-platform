@@ -76,7 +76,7 @@ export default function AdminCouponsPage() {
   return (
     <div>
       <div className="flex items-center justify-between mb-6">
-        <h1 className="text-2xl font-extrabold text-gray-900">Coupons</h1>
+        <h1 className="text-2xl font-extrabold text-gray-900 dark:text-gray-50">Coupons</h1>
         <Button size="sm" onClick={() => { reset({ discount_type: 'PERCENTAGE', is_active: true }); setModal('create'); }}
           leftIcon={<Plus className="h-4 w-4" />}>
           Add Coupon
@@ -87,26 +87,26 @@ export default function AdminCouponsPage() {
         <EmptyState title="No coupons" description="Create discount coupons for your customers."
           action={<Button onClick={() => setModal('create')}>Create Coupon</Button>} />
       ) : (
-        <div className="bg-white rounded-xl border border-gray-100 overflow-hidden">
+        <div className="bg-white dark:bg-dark-800 rounded-xl border border-gray-100 dark:border-dark-700 overflow-hidden">
           <div className="overflow-x-auto">
             <table className="w-full text-sm">
-              <thead className="bg-gray-50 border-b border-gray-100">
+              <thead className="bg-gray-50 dark:bg-dark-900 border-b border-gray-100 dark:border-dark-700">
                 <tr>
                   {['Code', 'Discount', 'Min Order', 'Max Uses', 'Expires', 'Active', 'Actions'].map(h => (
-                    <th key={h} className="text-left px-4 py-3 text-xs font-semibold text-gray-500 uppercase tracking-wide">{h}</th>
+                    <th key={h} className="text-left px-4 py-3 text-xs font-semibold text-gray-500 dark:text-gray-400 uppercase tracking-wide">{h}</th>
                   ))}
                 </tr>
               </thead>
-              <tbody className="divide-y divide-gray-50">
+              <tbody className="divide-y divide-gray-50 dark:divide-dark-700">
                 {coupons.map(c => (
-                  <tr key={c.id} className="hover:bg-gray-50">
-                    <td className="px-4 py-3 font-mono font-bold text-gray-900">{c.code}</td>
+                  <tr key={c.id} className="hover:bg-gray-50 dark:hover:bg-dark-700">
+                    <td className="px-4 py-3 font-mono font-bold text-gray-900 dark:text-gray-50">{c.code}</td>
                     <td className="px-4 py-3 font-semibold text-brand-600">
                       {c.discount_type === 'PERCENTAGE' ? `${c.discount_value}%` : formatCurrency(c.discount_value)}
                     </td>
-                    <td className="px-4 py-3 text-gray-500">{c.min_order_amount ? formatCurrency(c.min_order_amount) : '—'}</td>
-                    <td className="px-4 py-3 text-gray-500">{c.max_uses ?? 'Unlimited'}</td>
-                    <td className="px-4 py-3 text-gray-400 text-xs">{c.expires_at ? formatDate(c.expires_at) : '—'}</td>
+                    <td className="px-4 py-3 text-gray-500 dark:text-gray-400">{c.min_order_amount ? formatCurrency(c.min_order_amount) : '—'}</td>
+                    <td className="px-4 py-3 text-gray-500 dark:text-gray-400">{c.max_uses ?? 'Unlimited'}</td>
+                    <td className="px-4 py-3 text-gray-400 dark:text-gray-500 text-xs">{c.expires_at ? formatDate(c.expires_at) : '—'}</td>
                     <td className="px-4 py-3">
                       <button onClick={() => toggleActive(c)}>
                         {c.is_active
@@ -115,7 +115,7 @@ export default function AdminCouponsPage() {
                       </button>
                     </td>
                     <td className="px-4 py-3">
-                      <button onClick={() => openEdit(c)} className="p-1.5 text-gray-400 hover:text-brand-600 hover:bg-brand-50 rounded-lg transition-colors">
+                      <button onClick={() => openEdit(c)} className="p-1.5 text-gray-400 dark:text-gray-500 hover:text-brand-600 hover:bg-brand-50 dark:hover:bg-brand-900/30 rounded-lg transition-colors">
                         <Edit2 className="h-3.5 w-3.5" />
                       </button>
                     </td>

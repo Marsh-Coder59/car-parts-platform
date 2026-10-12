@@ -18,6 +18,11 @@ export const userService = {
     });
     return res.data;
   },
+
+  async updateTheme(theme: 'light' | 'dark') {
+    const res = await apiClient.patch('/api/users/theme', { theme });
+    return res.data as { theme_preference: 'light' | 'dark' };
+  },
 };
 
 export const addressService = {

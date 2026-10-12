@@ -31,7 +31,7 @@ export default function AdminOrdersPage() {
   return (
     <div>
       <div className="flex items-center justify-between mb-6">
-        <h1 className="text-2xl font-extrabold text-gray-900">Orders</h1>
+        <h1 className="text-2xl font-extrabold text-gray-900 dark:text-gray-50">Orders</h1>
         <Select value={status} onChange={e => { setStatus(e.target.value); setPage(1); }} className="w-56">
           {STATUSES.map(s => <option key={s} value={s}>{s || 'All Statuses'}</option>)}
         </Select>
@@ -41,31 +41,31 @@ export default function AdminOrdersPage() {
         <EmptyState title="No orders found" description="Orders will appear here." />
       ) : (
         <>
-          <div className="bg-white rounded-xl border border-gray-100 overflow-hidden">
+          <div className="bg-white dark:bg-dark-800 rounded-xl border border-gray-100 dark:border-dark-700 overflow-hidden">
             <div className="overflow-x-auto">
               <table className="w-full text-sm">
-                <thead className="bg-gray-50 border-b border-gray-100">
+                <thead className="bg-gray-50 dark:bg-dark-900 border-b border-gray-100 dark:border-dark-700">
                   <tr>
                     {['Order', 'Customer', 'Total', 'Deposit', 'Status', 'Date', ''].map(h => (
-                      <th key={h} className="text-left px-4 py-3 text-xs font-semibold text-gray-500 uppercase tracking-wide">{h}</th>
+                      <th key={h} className="text-left px-4 py-3 text-xs font-semibold text-gray-500 dark:text-gray-400 uppercase tracking-wide">{h}</th>
                     ))}
                   </tr>
                 </thead>
-                <tbody className="divide-y divide-gray-50">
+                <tbody className="divide-y divide-gray-50 dark:divide-dark-700">
                   {orders.map(order => (
-                    <tr key={order.id} className="hover:bg-gray-50 transition-colors">
+                    <tr key={order.id} className="hover:bg-gray-50 dark:hover:bg-dark-700 transition-colors">
                       <td className="px-4 py-3">
-                        <span className="font-semibold text-gray-900">{order.order_number}</span>
+                        <span className="font-semibold text-gray-900 dark:text-gray-50">{order.order_number}</span>
                       </td>
-                      <td className="px-4 py-3 text-gray-500">{order.email || order.customer}</td>
-                      <td className="px-4 py-3 font-semibold text-gray-900">{formatCurrency(order.total_amount)}</td>
+                      <td className="px-4 py-3 text-gray-500 dark:text-gray-400">{order.email || order.customer}</td>
+                      <td className="px-4 py-3 font-semibold text-gray-900 dark:text-gray-50">{formatCurrency(order.total_amount)}</td>
                       <td className="px-4 py-3">
                         {order.deposit_paid
                           ? <span className="text-green-600 font-medium text-xs">✓ Paid</span>
                           : <span className="text-orange-500 text-xs">Pending</span>}
                       </td>
                       <td className="px-4 py-3"><OrderStatusBadge status={order.order_status} /></td>
-                      <td className="px-4 py-3 text-gray-400 text-xs">{formatDate(order.created_at)}</td>
+                      <td className="px-4 py-3 text-gray-400 dark:text-gray-500 text-xs">{formatDate(order.created_at)}</td>
                       <td className="px-4 py-3">
                         <Link to={`/admin/orders/${order.id}`} className="text-brand-600 hover:text-brand-700">
                           <ChevronRight className="h-4 w-4" />

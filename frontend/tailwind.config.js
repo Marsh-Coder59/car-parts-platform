@@ -1,5 +1,6 @@
 /** @type {import('tailwindcss').Config} */
 export default {
+  darkMode: 'class',
   content: ['./index.html', './src/**/*.{js,ts,jsx,tsx}'],
   theme: {
     extend: {
@@ -22,6 +23,15 @@ export default {
           800: '#1a1a1a',
           700: '#242424',
           600: '#2e2e2e',
+        },
+        // Permanent dark-navy brand surface (the admin sidebar, regardless
+        // of the app-wide light/dark mode toggle) — distinct from the
+        // grayscale `dark` palette above, which is what the toggle uses.
+        navy: {
+          950: '#0b1120',
+          900: '#0f172a',
+          800: '#16213f',
+          700: '#243352',
         },
       },
       fontFamily: {
