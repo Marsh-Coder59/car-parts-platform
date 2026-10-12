@@ -3,7 +3,6 @@ import { Link } from 'react-router-dom';
 import { ArrowRight, Shield, Truck, HeadphonesIcon, Star, ChevronRight } from 'lucide-react';
 import { productsService } from '../../services/products.service';
 import { categoriesService } from '../../services/products.service';
-import { resolveImageUrl, onImageError } from '../../utils/image';
 import { SkeletonCard } from '../../components/ui/Skeleton';
 import ProductCard from '../../components/shared/ProductCard';
 import type { ProductListItem, Category } from '../../types';
@@ -95,17 +94,8 @@ export default function HomePage() {
                 to={`/products?category_id=${cat.id}`}
                 className="flex flex-col items-center gap-2 p-4 bg-white dark:bg-dark-800 rounded-xl border border-gray-100 dark:border-dark-700 hover:border-brand-200 hover:shadow-md transition-all group"
               >
-                <div className="w-10 h-10 rounded-lg bg-brand-50 dark:bg-brand-900/20 group-hover:bg-brand-100 flex items-center justify-center transition-colors overflow-hidden">
-                  {cat.image_url ? (
-                    <img
-                      src={resolveImageUrl(cat.image_url)}
-                      alt={cat.name}
-                      onError={onImageError}
-                      className="w-full h-full object-contain"
-                    />
-                  ) : (
-                    <span className="text-xl">🔧</span>
-                  )}
+                <div className="w-10 h-10 rounded-lg bg-brand-50 dark:bg-brand-900/20 group-hover:bg-brand-100 flex items-center justify-center transition-colors">
+                  <span className="text-xl">🔧</span>
                 </div>
                 <span className="text-xs font-medium text-gray-700 dark:text-gray-200 text-center leading-tight">{cat.name}</span>
               </Link>
