@@ -52,6 +52,15 @@ export const authService = {
     return res.data;
   },
 
+  // Real-time availability check used while the user is still typing on the
+  // registration form. `available` is `null` when the address isn't a
+  // complete, well-formed email yet (nothing to check) or if the check
+  // itself failed — callers should treat `null` as "unknown", not "taken".
+  async checkEmail(email: string): Promise<{ available: boolean | null }> {
+    const res = await apiClient.get('/api/auth/check-email', { params: { email } });
+    return res.data;
+  },
+
   async changePassword(current_password: string, new_password: string) {
     const res = await apiClient.post('/api/auth/change-password', {
       current_password,

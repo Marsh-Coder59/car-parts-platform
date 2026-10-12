@@ -1,11 +1,12 @@
 
-import { useState } from 'react';
+import { useEffect, useState } from 'react';
 import { Link, useNavigate, useSearchParams } from 'react-router-dom';
 import { Mail, Lock } from 'lucide-react';
 import { useForm } from 'react-hook-form';
 import { useAuth } from '../../context/AuthContext';
 import { useLoading } from '../../context/LoadingContext';
 import { getErrorMessage } from '../../services/api';
+import { authService } from '../../services/auth.service';
 import { Input } from '../../components/ui/Input';
 import Button from '../../components/ui/Button';
 import Logo from '../../components/shared/Logo';
@@ -15,6 +16,8 @@ interface FormValues {
   email: string;
   password: string;
 }
+
+const RESEND_COOLDOWN_SECONDS = 30;
 
 export default function LoginPage() {
   const { login } = useAuth();
@@ -30,22 +33,55 @@ export default function LoginPage() {
   const {
     register,
     handleSubmit,
+    getValues,
     formState: { errors },
   } = useForm<FormValues>();
 
   const [error, setError] = useState('');
+  const [needsVerification, setNeedsVerification] = useState(false);
+  const [resendCooldown, setResendCooldown] = useState(0);
+  const [resending, setResending] = useState(false);
+
+  useEffect(() => {
+    if (resendCooldown <= 0) return;
+    const t = setInterval(() => setResendCooldown(s => Math.max(0, s - 1)), 1000);
+    return () => clearInterval(t);
+  }, [resendCooldown]);
 
   const onSubmit = async (data: FormValues) => {
     setError('');
+    setNeedsVerification(false);
     showLoading('Signing in…');
 
     try {
       await login(data.email, data.password);
       navigate(redirect, { replace: true });
     } catch (err) {
-      setError(getErrorMessage(err));
+      const message = getErrorMessage(err);
+      setError(message);
+      // The backend only returns this exact copy for the unverified-email
+      // case (see /api/auth/login) — match on it to offer a resend action
+      // rather than parsing a machine code out of a human-readable string.
+      if (message.toLowerCase().includes('verify your email')) {
+        setNeedsVerification(true);
+      }
     } finally {
       hideLoading();
+    }
+  };
+
+  const handleResend = async () => {
+    const email = getValues('email');
+    if (!email || resendCooldown > 0 || resending) return;
+    setResending(true);
+    try {
+      await authService.resendVerification(email);
+      toast.success('Verification email sent — check your inbox.');
+      setResendCooldown(RESEND_COOLDOWN_SECONDS);
+    } catch (err) {
+      toast.error(getErrorMessage(err));
+    } finally {
+      setResending(false);
     }
   };
 
@@ -76,6 +112,18 @@ export default function LoginPage() {
           {error && (
             <div className="mb-4 p-3 bg-red-50 dark:bg-red-900/20 border border-red-200 rounded-lg text-sm text-red-700">
               {error}
+              {needsVerification && (
+                <div className="mt-2">
+                  <button
+                    type="button"
+                    onClick={handleResend}
+                    disabled={resendCooldown > 0 || resending}
+                    className="font-semibold underline disabled:opacity-50 disabled:cursor-not-allowed"
+                  >
+                    {resendCooldown > 0 ? `Resend verification email in ${resendCooldown}s` : resending ? 'Sending…' : 'Resend verification email'}
+                  </button>
+                </div>
+              )}
             </div>
           )}
 

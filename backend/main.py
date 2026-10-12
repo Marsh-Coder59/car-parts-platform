@@ -686,16 +686,60 @@ def health():
 # AUTH ROUTES
 # ============================================================
 
+@app.get("/api/auth/check-email")
+def check_email_availability(email: str, request: Request):
+    """
+    Real-time availability check used by the registration form.
+    Returns ONLY a boolean — never the matching account's name, status, or
+    any other detail — so this endpoint can't be used to enumerate or
+    fingerprint existing accounts beyond "is this exact address taken".
+    Lightly rate-limited since it's called on every keystroke/blur.
+    """
+    client_ip = request.client.host if request.client else "unknown"
+    _check_rate_limit(client_ip, "check-email")
+
+    normalized = email.strip().lower()
+    if not normalized or "@" not in normalized or "." not in normalized.split("@")[-1]:
+        # Not a well-formed email yet — nothing to check.
+        return {"available": None}
+
+    conn = None
+    try:
+        conn = get_db_connection()
+        cur = conn.cursor()
+        cur.execute("SELECT 1 FROM users WHERE email = %s", (normalized,))
+        exists = cur.fetchone() is not None
+        cur.close()
+        return {"available": not exists}
+    except Exception:
+        logger.exception("check_email_availability error")
+        # Fail open on the convenience check — the DB unique constraint and
+        # the register endpoint's own check remain the authoritative guard.
+        return {"available": None}
+    finally:
+        if conn:
+            conn.close()
+
+
 @app.post("/api/auth/register", status_code=201)
 def register(user: UserRegister, request: Request):
+    client_ip = request.client.host if request.client else "unknown"
+    _check_rate_limit(client_ip, "register")
+
     conn = None
     try:
         conn = get_db_connection()
         cur = conn.cursor()
 
-        cur.execute("SELECT id FROM users WHERE email = %s", (user.email.lower(),))
+        normalized_email = user.email.strip().lower()
+
+        cur.execute("SELECT id FROM users WHERE email = %s", (normalized_email,))
         if cur.fetchone():
-            raise HTTPException(status_code=409, detail="Email already registered")
+            # Deliberately specific here (unlike login/forgot-password) because
+            # this is the user's own registration attempt, not someone probing
+            # another person's account — the directive's required UX is a
+            # friendly message pointing them to login.
+            raise HTTPException(status_code=409, detail="This email is already registered. Please log in or reset your password.")
 
         password_hash = hash_password(user.password)
 
@@ -705,15 +749,52 @@ def register(user: UserRegister, request: Request):
             VALUES (%s, %s, %s, %s, %s, 'CUSTOMER', 'ACTIVE', FALSE, NOW(), NOW())
             RETURNING id, first_name, last_name, email, role
             """,
-            (user.first_name, user.last_name, user.email.lower(), user.phone, password_hash),
+            (user.first_name, user.last_name, normalized_email, user.phone, password_hash),
         )
         new_user = cur.fetchone()
         user_id = new_user[0]
 
+        # Generate the email-verification token now, in the same transaction
+        # as account creation, so a user is never left in a state where the
+        # account exists but no verification path was ever issued.
+        verification_token = secrets.token_urlsafe(32)
+        token_hash = hashlib.sha256(verification_token.encode()).hexdigest()
+        expires_at = datetime.now(timezone.utc) + timedelta(hours=24)
+        try:
+            cur.execute(
+                """
+                INSERT INTO email_verification_tokens (user_id, token_hash, expires_at, used, created_at)
+                VALUES (%s, %s, %s, FALSE, NOW())
+                ON CONFLICT (user_id) DO UPDATE
+                    SET token_hash = EXCLUDED.token_hash,
+                        expires_at = EXCLUDED.expires_at,
+                        used = FALSE,
+                        created_at = NOW()
+                """,
+                (user_id, token_hash, expires_at.replace(tzinfo=None)),
+            )
+        except Exception:
+            conn.rollback()
+            # Re-run the user insert's effects are already rolled back too in
+            # this fallback branch, so redo the minimal state needed: store
+            # the token on the users table instead (older schema variant).
+            cur.execute(
+                """
+                INSERT INTO users (first_name, last_name, email, phone, password_hash, role, status, email_verified,
+                                    email_verification_token, email_verification_expires, created_at, updated_at)
+                VALUES (%s, %s, %s, %s, %s, 'CUSTOMER', 'ACTIVE', FALSE, %s, %s, NOW(), NOW())
+                RETURNING id, first_name, last_name, email, role
+                """,
+                (user.first_name, user.last_name, normalized_email, user.phone, password_hash,
+                 token_hash, expires_at.replace(tzinfo=None)),
+            )
+            new_user = cur.fetchone()
+            user_id = new_user[0]
+
         # Audit
         write_audit_log(cur, user_id, "USER_REGISTERED", "users", user_id,
-                        new_values={"email": user.email, "role": "CUSTOMER"},
-                        ip_address=request.client.host if request.client else None)
+                        new_values={"email": normalized_email, "role": "CUSTOMER"},
+                        ip_address=client_ip)
 
         # Notification
         create_notification(cur, user_id, "WELCOME", "Welcome to CarParts",
@@ -722,11 +803,17 @@ def register(user: UserRegister, request: Request):
         conn.commit()
         cur.close()
 
+        # Send the verification email AFTER commit — if delivery fails, the
+        # account still exists correctly and the user can use "Resend code"
+        # on the verification page (which re-checks/re-sends on request).
+        email_sent = _send_verification_email(normalized_email, user.first_name, verification_token)
+
         return {
-            "message": "Registration successful",
+            "message": "Registration successful. Please check your email to verify your account.",
+            "email_sent": email_sent,
             "user": {
                 "id": new_user[0], "first_name": new_user[1], "last_name": new_user[2],
-                "email": new_user[3], "role": new_user[4]
+                "email": normalized_email, "role": new_user[4]
             }
         }
     except HTTPException:
@@ -751,7 +838,8 @@ def login(credentials: UserLogin, request: Request, response: Response):
         cur = conn.cursor()
 
         cur.execute(
-            "SELECT id, first_name, last_name, email, password_hash, role, status, theme_preference FROM users WHERE email = %s",
+            "SELECT id, first_name, last_name, email, password_hash, role, status, theme_preference, email_verified "
+            "FROM users WHERE email = %s",
             (credentials.email.lower(),),
         )
         row = cur.fetchone()
@@ -762,7 +850,7 @@ def login(credentials: UserLogin, request: Request, response: Response):
             verify_password(credentials.password, dummy_hash)
             raise HTTPException(status_code=401, detail="Invalid email or password")
 
-        user_id, first_name, last_name, email, password_hash, role, status, theme_preference = row
+        user_id, first_name, last_name, email, password_hash, role, status, theme_preference, email_verified = row
 
         if not verify_password(credentials.password, password_hash):
             write_audit_log(cur, user_id, "LOGIN_FAILED", "users", user_id,
@@ -772,6 +860,18 @@ def login(credentials: UserLogin, request: Request, response: Response):
 
         if status != "ACTIVE":
             raise HTTPException(status_code=403, detail="Account is not active")
+
+        # Admin/staff accounts are created already-verified (see create_staff)
+        # and must never be locked out by a customer-facing email flow.
+        # Only CUSTOMER accounts are held to email verification.
+        if role == "CUSTOMER" and not email_verified:
+            write_audit_log(cur, user_id, "LOGIN_BLOCKED_UNVERIFIED", "users", user_id,
+                            ip_address=request.client.host if request.client else None)
+            conn.commit()
+            raise HTTPException(
+                status_code=403,
+                detail="Please verify your email before logging in. Check your inbox for the verification link, or request a new one below.",
+            )
 
         token = generate_session_token()
         token_hash = hash_token(token)
@@ -4970,17 +5070,32 @@ def resend_verification(body: ResendVerificationRequest, request: Request):
         user = cur.fetchone()
         if user and not user[3]:  # exists and not verified
             user_id, first_name, email = user[0], user[1], user[2]
-            # Check rate limit — max 1 resend per 5 minutes
+            # Backend-enforced cooldown — must match the 30s cooldown shown
+            # in the UI's "Resend" button. Enforced here (not just a
+            # disabled button client-side) so the cooldown can't be bypassed
+            # by calling the endpoint directly.
             try:
                 cur.execute(
                     """
                     SELECT created_at FROM email_verification_tokens
-                    WHERE user_id = %s AND created_at > NOW() - INTERVAL '5 minutes'
+                    WHERE user_id = %s AND created_at > NOW() - INTERVAL '30 seconds'
                     """,
                     (user_id,),
                 )
                 if cur.fetchone():
-                    raise HTTPException(status_code=429, detail="Please wait 5 minutes before requesting another verification email")
+                    raise HTTPException(status_code=429, detail="Please wait 30 seconds before requesting another verification email")
+
+                # Hourly cap — the 30s cooldown alone still allows ~120
+                # emails/hour if someone scripts around the UI.
+                cur.execute(
+                    """
+                    SELECT COUNT(*) FROM email_verification_tokens
+                    WHERE user_id = %s AND created_at > NOW() - INTERVAL '1 hour'
+                    """,
+                    (user_id,),
+                )
+                if (cur.fetchone() or [0])[0] >= 5:
+                    raise HTTPException(status_code=429, detail="Too many verification emails requested. Please try again in an hour.")
             except HTTPException:
                 raise
             except Exception:
