@@ -29,6 +29,7 @@ export default function LoginPage() {
   const sessionExpired = searchParams.get('expired') === '1';
   const redirect = searchParams.get('redirect') || '/';
   const expired = searchParams.get('expired');
+  const passwordReset = searchParams.get('reset') === '1';
 
   const {
     register,
@@ -106,6 +107,12 @@ export default function LoginPage() {
           {expired && (
             <div className="mb-4 p-3 bg-amber-50 border border-amber-200 rounded-lg text-sm text-amber-800">
               Your session has expired. Please sign in again.
+            </div>
+          )}
+
+          {passwordReset && (
+            <div className="mb-4 p-3 bg-green-50 dark:bg-green-900/20 border border-green-200 rounded-lg text-sm text-green-700">
+              Your password was reset successfully. Please sign in with your new password.
             </div>
           )}
 

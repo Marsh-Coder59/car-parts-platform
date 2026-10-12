@@ -8,6 +8,8 @@ import { getErrorMessage } from '../../services/api';
 import { Input } from '../../components/ui/Input';
 import Button from '../../components/ui/Button';
 import Logo from '../../components/shared/Logo';
+import PasswordStrengthMeter from '../../components/shared/PasswordStrengthMeter';
+import { evaluatePasswordStrength } from '../../utils/password';
 
 interface FormValues { new_password: string; confirm: string; }
 
@@ -21,10 +23,14 @@ export default function ResetPasswordPage() {
   const pwd = watch('new_password');
 
   const onSubmit = async ({ new_password }: FormValues) => {
+    setError('');
     if (!token) { setError('Invalid or missing reset token.'); return; }
     showLoading();
     try {
       await authService.resetPassword(token, new_password);
+      // A toast here would be lost mid-navigation, so the success message
+      // is carried via the ?reset=1 query param and rendered on the login
+      // page itself.
       navigate('/login?reset=1');
     } catch (err) {
       setError(getErrorMessage(err));
@@ -45,13 +51,26 @@ export default function ResetPasswordPage() {
           {!token ? (
             <p className="text-sm text-red-600">Invalid reset link. <Link to="/forgot-password" className="underline">Request a new one</Link>.</p>
           ) : (
-            <form onSubmit={handleSubmit(onSubmit)} className="space-y-4">
-              <Input label="New password" type="password" leftIcon={<Lock className="h-4 w-4" />}
-                hint="At least 8 characters"
-                error={errors.new_password?.message}
-                {...register('new_password', { required: 'Required', minLength: { value: 8, message: 'At least 8 characters' } })}
-              />
+            <form onSubmit={handleSubmit(onSubmit)} className="space-y-4" noValidate>
+              <div>
+                <Input label="New password" type="password" leftIcon={<Lock className="h-4 w-4" />}
+                  autoComplete="new-password"
+                  error={errors.new_password?.message}
+                  {...register('new_password', {
+                    required: 'Required',
+                    minLength: { value: 8, message: 'At least 8 characters' },
+                    validate: v => {
+                      const result = evaluatePasswordStrength(v);
+                      const commonReq = result.requirements.find(r => r.id === 'common');
+                      if (commonReq && !commonReq.met) return 'This password is too common or predictable — choose something more unique';
+                      return true;
+                    },
+                  })}
+                />
+                <PasswordStrengthMeter password={pwd || ''} />
+              </div>
               <Input label="Confirm password" type="password" leftIcon={<Lock className="h-4 w-4" />}
+                autoComplete="new-password"
                 error={errors.confirm?.message}
                 {...register('confirm', { required: 'Required', validate: v => v === pwd || 'Passwords do not match' })}
               />

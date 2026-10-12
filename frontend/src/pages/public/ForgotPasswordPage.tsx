@@ -4,6 +4,7 @@ import { Mail } from 'lucide-react';
 import { useForm } from 'react-hook-form';
 import { authService } from '../../services/auth.service';
 import { useLoading } from '../../context/LoadingContext';
+import { getErrorMessage } from '../../services/api';
 import { Input } from '../../components/ui/Input';
 import Button from '../../components/ui/Button';
 import Logo from '../../components/shared/Logo';
@@ -11,13 +12,21 @@ import Logo from '../../components/shared/Logo';
 export default function ForgotPasswordPage() {
   const { showLoading, hideLoading } = useLoading();
   const [sent, setSent] = useState(false);
+  const [error, setError] = useState('');
   const { register, handleSubmit, formState: { errors } } = useForm<{ email: string }>();
 
   const onSubmit = async ({ email }: { email: string }) => {
+    setError('');
     showLoading();
     try {
+      // Always resolves with the same generic message, win or lose — the
+      // backend intentionally never reveals whether the email is
+      // registered. A genuine failure (network error, rate limit) is the
+      // only thing that reaches the catch block below.
       await authService.forgotPassword(email);
       setSent(true);
+    } catch (err) {
+      setError(getErrorMessage(err));
     } finally {
       hideLoading();
     }
@@ -36,17 +45,26 @@ export default function ForgotPasswordPage() {
             <div className="text-center py-4">
               <div className="w-14 h-14 bg-green-100 rounded-full flex items-center justify-center mx-auto mb-4 text-2xl">✉</div>
               <p className="text-sm text-gray-700 dark:text-gray-200 font-medium">If that email is registered, a reset link has been sent.</p>
-              <p className="text-xs text-gray-500 dark:text-gray-400 mt-1">Check your inbox (and spam folder).</p>
+              <p className="text-xs text-gray-500 dark:text-gray-400 mt-1">Check your inbox (and spam folder). The link expires in 2 hours.</p>
               <Link to="/login" className="mt-4 inline-block text-sm text-brand-600 hover:underline">Back to sign in</Link>
             </div>
           ) : (
-            <form onSubmit={handleSubmit(onSubmit)} className="space-y-4">
+            <form onSubmit={handleSubmit(onSubmit)} className="space-y-4" noValidate>
+              {error && (
+                <div className="p-3 bg-red-50 dark:bg-red-900/20 border border-red-200 rounded-lg text-sm text-red-700">
+                  {error}
+                </div>
+              )}
               <Input
                 label="Email address"
                 type="email"
                 leftIcon={<Mail className="h-4 w-4" />}
                 error={errors.email?.message}
-                {...register('email', { required: 'Email is required' })}
+                autoComplete="email"
+                {...register('email', {
+                  required: 'Email is required',
+                  pattern: { value: /\S+@\S+\.\S+/, message: 'Enter a valid email address' },
+                })}
               />
               <Button type="submit" fullWidth size="lg">Send Reset Link</Button>
               <p className="text-center text-sm text-gray-500 dark:text-gray-400">

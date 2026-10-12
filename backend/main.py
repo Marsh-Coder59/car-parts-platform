@@ -62,6 +62,31 @@ def verify_password(plain: str, hashed: str) -> bool:
     return pwd_context.verify(plain, hashed)
 
 
+# A small, explicit denylist — a UX/defense-in-depth backstop, not a breach
+# database. The real floor is length + composition below; this just catches
+# the handful of passwords people reach for first ("Password1!", etc.).
+_COMMON_PASSWORDS = {
+    "password", "password1", "password123", "12345678", "123456789",
+    "1234567890", "qwerty123", "qwertyuiop", "letmein123", "welcome123",
+    "admin1234", "iloveyou1", "monkey123", "dragon123", "sunshine1",
+    "princess1", "football1", "baseball1", "superman1", "trustno1",
+}
+
+
+def enforce_password_policy(v: str) -> str:
+    """
+    Shared, backend-authoritative password policy. Used by registration,
+    password reset, and password change — the frontend's live strength
+    meter is a UX aid only; this is what actually decides whether a
+    password is accepted, and it cannot be bypassed from the client.
+    """
+    if len(v) < 8:
+        raise ValueError("Password must be at least 8 characters")
+    if v.lower() in _COMMON_PASSWORDS:
+        raise ValueError("This password is too common. Please choose a more unique password.")
+    return v
+
+
 # ============================================================
 # SESSION TOKEN HELPERS
 # ============================================================
@@ -303,9 +328,7 @@ class UserRegister(BaseModel):
     @field_validator("password")
     @classmethod
     def password_strength(cls, v):
-        if len(v) < 8:
-            raise ValueError("Password must be at least 8 characters")
-        return v
+        return enforce_password_policy(v)
 
 
 class UserLogin(BaseModel):
@@ -320,9 +343,7 @@ class PasswordChange(BaseModel):
     @field_validator("new_password")
     @classmethod
     def pwd_min(cls, v):
-        if len(v) < 8:
-            raise ValueError("Password must be at least 8 characters")
-        return v
+        return enforce_password_policy(v)
 
 
 class ProfileUpdate(BaseModel):
@@ -349,6 +370,11 @@ class ForgotPasswordRequest(BaseModel):
 class ResetPasswordRequest(BaseModel):
     token: str
     new_password: str
+
+    @field_validator("new_password")
+    @classmethod
+    def pwd_policy(cls, v):
+        return enforce_password_policy(v)
 
 
 # CATEGORIES / BRANDS
@@ -1027,38 +1053,62 @@ def forgot_password(body: ForgotPasswordRequest, request: Request):
     Sends email if SMTP is configured; otherwise logs the token for dev environments.
     Does NOT reveal whether the email is registered.
     """
+    client_ip = request.client.host if request.client else "unknown"
+    # IP-based limit: this endpoint takes no auth and is a classic target
+    # for enumeration/abuse (spamming an arbitrary inbox with reset emails).
+    _check_rate_limit(client_ip, "forgot-password")
+
+    normalized_email = body.email.strip().lower()
+
     conn = None
     try:
         conn = get_db_connection()
         cur = conn.cursor()
         cur.execute(
             "SELECT id, first_name, email FROM users WHERE email = %s AND status = 'ACTIVE'",
-            (body.email.lower(),),
+            (normalized_email,),
         )
         user = cur.fetchone()
         if user:
             user_id, first_name, email = user
-            token = secrets.token_urlsafe(32)
-            token_hash = hashlib.sha256(token.encode()).hexdigest()
-            expires_at = datetime.now(timezone.utc) + timedelta(hours=2)
-            # Store in password_reset_tokens table (or users table column)
-            # Using a try/except to handle both schema variants
+
+            # Per-account cooldown: if a reset was already requested for
+            # this account in the last 30 seconds, don't issue a new token
+            # or send another email — but still return the exact same
+            # generic response below, so this never discloses whether the
+            # account exists via timing or response differences.
+            already_recent = False
             try:
                 cur.execute(
-                    """
-                    INSERT INTO password_reset_tokens (user_id, token_hash, expires_at, used, created_at)
-                    VALUES (%s, %s, %s, FALSE, NOW())
-                    ON CONFLICT (user_id) DO UPDATE
-                        SET token_hash = EXCLUDED.token_hash,
-                            expires_at = EXCLUDED.expires_at,
-                            used = FALSE,
-                            created_at = NOW()
-                    """,
-                    (user_id, token_hash, expires_at.replace(tzinfo=None)),
+                    "SELECT 1 FROM password_reset_tokens WHERE user_id = %s AND created_at > NOW() - INTERVAL '30 seconds'",
+                    (user_id,),
                 )
+                already_recent = cur.fetchone() is not None
             except Exception:
-                # Fallback: store reset token on users table if column exists
                 conn.rollback()
+
+            if not already_recent:
+                token = secrets.token_urlsafe(32)
+                token_hash = hashlib.sha256(token.encode()).hexdigest()
+                expires_at = datetime.now(timezone.utc) + timedelta(hours=2)
+                # Store in password_reset_tokens table (or users table column)
+                # Using a try/except to handle both schema variants
+                try:
+                    cur.execute(
+                        """
+                        INSERT INTO password_reset_tokens (user_id, token_hash, expires_at, used, created_at)
+                        VALUES (%s, %s, %s, FALSE, NOW())
+                        ON CONFLICT (user_id) DO UPDATE
+                            SET token_hash = EXCLUDED.token_hash,
+                                expires_at = EXCLUDED.expires_at,
+                                used = FALSE,
+                                created_at = NOW()
+                        """,
+                        (user_id, token_hash, expires_at.replace(tzinfo=None)),
+                    )
+                except Exception:
+                    # Fallback: store reset token on users table if column exists
+                    conn.rollback()
                 cur.execute(
                     """
                     UPDATE users SET
@@ -1069,11 +1119,15 @@ def forgot_password(body: ForgotPasswordRequest, request: Request):
                     """,
                     (token_hash, expires_at.replace(tzinfo=None), user_id),
                 )
-            write_audit_log(cur, user_id, "PASSWORD_RESET_REQUESTED", "users", user_id,
-                            ip_address=request.client.host if request.client else None)
-            conn.commit()
-            # Send email if configured, otherwise log token for development
-            _send_password_reset_email(email, first_name, token)
+                write_audit_log(cur, user_id, "PASSWORD_RESET_REQUESTED", "users", user_id,
+                                ip_address=client_ip)
+                conn.commit()
+                # Send email if configured, otherwise log token for development
+                _send_password_reset_email(email, first_name, token)
+            else:
+                # Throttled — no new token, no new email, no audit noise.
+                # The response below is identical either way.
+                conn.commit()
         cur.close()
     except Exception:
         if conn:
@@ -1088,8 +1142,13 @@ def forgot_password(body: ForgotPasswordRequest, request: Request):
 @app.post("/api/auth/reset-password")
 def reset_password(body: ResetPasswordRequest, request: Request):
     """Validates the reset token and sets a new password. Token is invalidated after use."""
-    if len(body.new_password) < 8:
-        raise HTTPException(status_code=422, detail="Password must be at least 8 characters")
+    client_ip = request.client.host if request.client else "unknown"
+    # Token guessing resistance: the token itself is 32 bytes of CSPRNG
+    # output (unguessable in practice), but rate-limiting the endpoint is
+    # still cheap defense-in-depth against brute-force/credential-stuffing
+    # style abuse of this specific route.
+    _check_rate_limit(client_ip, "reset-password")
+
     conn = None
     try:
         conn = get_db_connection()
@@ -1098,17 +1157,22 @@ def reset_password(body: ResetPasswordRequest, request: Request):
 
         # Try password_reset_tokens table first
         user_id = None
+        user_email = None
+        user_first_name = None
         try:
             cur.execute(
                 """
-                SELECT user_id FROM password_reset_tokens
-                WHERE token_hash = %s AND used = FALSE AND expires_at > NOW()
+                SELECT prt.user_id, u.email, u.first_name
+                FROM password_reset_tokens prt
+                JOIN users u ON u.id = prt.user_id
+                WHERE prt.token_hash = %s AND prt.used = FALSE AND prt.expires_at > NOW()
+                  AND u.status = 'ACTIVE'
                 """,
                 (token_hash,),
             )
             row = cur.fetchone()
             if row:
-                user_id = row[0]
+                user_id, user_email, user_first_name = row
                 cur.execute(
                     "UPDATE password_reset_tokens SET used = TRUE WHERE token_hash = %s",
                     (token_hash,),
@@ -1118,7 +1182,7 @@ def reset_password(body: ResetPasswordRequest, request: Request):
             # Fallback: check users table column
             cur.execute(
                 """
-                SELECT id FROM users
+                SELECT id, email, first_name FROM users
                 WHERE password_reset_token = %s
                   AND password_reset_expires > NOW()
                   AND status = 'ACTIVE'
@@ -1127,29 +1191,38 @@ def reset_password(body: ResetPasswordRequest, request: Request):
             )
             row = cur.fetchone()
             if row:
-                user_id = row[0]
+                user_id, user_email, user_first_name = row
                 cur.execute(
                     "UPDATE users SET password_reset_token = NULL, password_reset_expires = NULL WHERE id = %s",
                     (user_id,),
                 )
 
         if not user_id:
-            raise HTTPException(status_code=400, detail="Invalid or expired reset token")
+            raise HTTPException(status_code=400, detail="This reset link is invalid or has expired. Please request a new one.")
 
         new_hash = hash_password(body.new_password)
         cur.execute(
             "UPDATE users SET password_hash = %s, updated_at = NOW() WHERE id = %s",
             (new_hash, user_id),
         )
-        # Revoke all existing sessions for security
+        # Revoke all existing sessions for security — anyone who had a
+        # session open (including an attacker, if the reset was triggered
+        # because the account was compromised) is logged out everywhere.
         cur.execute(
             "UPDATE user_sessions SET revoked_at = NOW() WHERE user_id = %s AND revoked_at IS NULL",
             (user_id,),
         )
         write_audit_log(cur, user_id, "PASSWORD_RESET_COMPLETED", "users", user_id,
-                        ip_address=request.client.host if request.client else None)
+                        ip_address=client_ip)
         conn.commit()
         cur.close()
+
+        # Let the customer know, independent of whether they were the one
+        # who triggered this — if an attacker reset the password, the real
+        # owner needs to see this even though they can no longer log in.
+        if user_email:
+            _send_password_changed_email(user_email, user_first_name or "there")
+
         return {"message": "Password reset successfully. Please log in with your new password."}
     except HTTPException:
         if conn:
@@ -1189,6 +1262,7 @@ def change_password(
                         ip_address=request.client.host if request.client else None)
         conn.commit()
         cur.close()
+        _send_password_changed_email(current_user["email"], current_user.get("first_name") or "there")
         return {"message": "Password changed successfully"}
     except HTTPException:
         if conn:
@@ -4969,6 +5043,25 @@ def _send_password_reset_email(to_email: str, first_name: str, token: str) -> bo
     <p>This link expires in 2 hours. If you did not request this, ignore this email.</p>
     """
     text = f"Hi {first_name},\n\nReset your password: {reset_url}\n\nExpires in 2 hours."
+    return _send_email(to_email, subject, html, text)
+
+
+def _send_password_changed_email(to_email: str, first_name: str) -> bool:
+    """
+    Sent after ANY successful password change (self-service reset or the
+    logged-in change-password form) — the recipient didn't necessarily
+    trigger it themselves, so this is a security notice, not a receipt.
+    """
+    subject = "Your CarParts password was changed"
+    html = f"""
+    <p>Hi {first_name},</p>
+    <p>This is a confirmation that the password for your account was just changed.</p>
+    <p>If you made this change, no further action is needed.</p>
+    <p><strong>If you did not make this change</strong>, your account may be compromised —
+    please reset your password immediately and contact support.</p>
+    """
+    text = (f"Hi {first_name},\n\nYour password was just changed. If this wasn't you, "
+            f"reset your password immediately and contact support.")
     return _send_email(to_email, subject, html, text)
 
 
