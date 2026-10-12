@@ -90,10 +90,14 @@ export default function HomePage() {
           <div className="grid grid-cols-2 sm:grid-cols-4 lg:grid-cols-8 gap-3">
             {categories.map(cat => (
               <Link
-                to="/categories"
-                className="inline-flex items-center gap-2 px-6 py-3 border border-gray-600 hover:border-gray-400 text-gray-200 hover:text-white font-semibold rounded-lg transition-colors"
+                key={cat.id}
+                to={`/products?category_id=${cat.id}`}
+                className="flex flex-col items-center gap-2 p-4 bg-white dark:bg-dark-800 rounded-xl border border-gray-100 dark:border-dark-700 hover:border-brand-200 hover:shadow-md transition-all group"
               >
-                Browse Categories
+                <div className="w-10 h-10 rounded-lg bg-brand-50 dark:bg-brand-900/20 group-hover:bg-brand-100 flex items-center justify-center transition-colors">
+                  <span className="text-xl">🔧</span>
+                </div>
+                <span className="text-xs font-medium text-gray-700 dark:text-gray-200 text-center leading-tight">{cat.name}</span>
               </Link>
             ))}
           </div>
