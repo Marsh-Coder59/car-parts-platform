@@ -4963,57 +4963,124 @@ def list_audit_logs(
 
 
 # ============================================================
-# EMAIL SERVICE — stdlib smtplib, no external dependency
+# EMAIL SERVICE — Mailjet HTTPS Send API (v3.1), stdlib HTTP client
 # ============================================================
-import smtplib
-from email.mime.text import MIMEText
-from email.mime.multipart import MIMEMultipart
+# Migrated off SMTP: Render's outbound network blocks/throttles raw SMTP
+# ports on the free tier, which is what produced the
+# "[Errno 110] Connection timed out" failures in production. Mailjet's
+# Send API is plain HTTPS (port 443), which isn't subject to that.
+#
+# NOTE ON NAMING: SMTP_FROM / SMTP_FROM_NAME are kept as the env var names
+# for continuity with the rest of this project's config, but they are now
+# just the sender identity (From address/name) used in the Mailjet API
+# call — they are NOT SMTP server settings anymore. SMTP_HOST, SMTP_PORT,
+# SMTP_USER, SMTP_PASSWORD and SMTP_TLS are no longer read anywhere; they
+# can be removed from the environment once this is deployed.
+import base64
+import socket
+import urllib.request
+import urllib.error
+
+MAILJET_SEND_URL = "https://api.mailjet.com/v3.1/send"
+MAILJET_TIMEOUT_SECONDS = 10  # connect + response combined (urllib's single socket timeout)
 
 
-def _get_smtp_config() -> dict:
+def _get_mailjet_config() -> dict:
     return {
-        "host": os.getenv("SMTP_HOST", ""),
-        "port": int(os.getenv("SMTP_PORT", "587")),
-        "user": os.getenv("SMTP_USER", ""),
-        "password": os.getenv("SMTP_PASSWORD", ""),
-        "from_email": os.getenv("SMTP_FROM", os.getenv("SMTP_USER", "noreply@carparts.local")),
+        "api_key": os.getenv("MAILJET_API_KEY", ""),
+        "secret_key": os.getenv("MAILJET_SECRET_KEY", ""),
+        "from_email": os.getenv("SMTP_FROM", "noreply@carparts.local"),
         "from_name": os.getenv("SMTP_FROM_NAME", "CarParts"),
-        "tls": os.getenv("SMTP_TLS", "true").lower() == "true",
     }
 
 
 def _send_email(to_email: str, subject: str, body_html: str, body_text: str = "") -> bool:
-    """Send email via SMTP. Returns True on success, False if SMTP not configured."""
-    cfg = _get_smtp_config()
-    if not cfg["host"] or not cfg["user"]:
-        # Dev mode: log the email instead of sending
-        logger.info(
-            "EMAIL (SMTP not configured) → To: %s | Subject: %s | Body: %s",
-            to_email, subject, body_text or body_html[:200]
+    """
+    Send an email via the Mailjet HTTPS Send API.
+
+    Returns True only when Mailjet's API confirms it ACCEPTED the message
+    for delivery (HTTP 200 + Status "success" for the message in the
+    response body) — this is provider acceptance, not proof the message
+    reached the recipient's inbox. Actual delivery/bounce status is only
+    visible in Mailjet's own message activity dashboard/webhooks, which
+    this function does not query.
+
+    Returns False if Mailjet is not configured (dev/log-only mode) or if
+    the send failed for any reason — callers must treat False as "did not
+    send" and must not mark anything (email-verified, reset-link-sent,
+    etc.) as succeeded based on a False return.
+    """
+    cfg = _get_mailjet_config()
+    if not cfg["api_key"] or not cfg["secret_key"]:
+        # Dev mode: log that an email WOULD be sent, without the body —
+        # the body often contains a verification link or reset token, and
+        # those must never land in logs.
+        logger.info("EMAIL (Mailjet not configured — dev/log-only mode) → To: %s | Subject: %s", to_email, subject)
+        return False
+
+    payload = {
+        "Messages": [
+            {
+                "From": {"Email": cfg["from_email"], "Name": cfg["from_name"]},
+                "To": [{"Email": to_email}],
+                "Subject": subject,
+                "TextPart": body_text or "",
+                "HTMLPart": body_html,
+            }
+        ]
+    }
+
+    try:
+        body_bytes = json.dumps(payload).encode("utf-8")
+        auth_token = base64.b64encode(f"{cfg['api_key']}:{cfg['secret_key']}".encode()).decode()
+        req = urllib.request.Request(
+            MAILJET_SEND_URL,
+            data=body_bytes,
+            method="POST",
+            headers={
+                "Content-Type": "application/json",
+                "Authorization": f"Basic {auth_token}",
+            },
+        )
+        with urllib.request.urlopen(req, timeout=MAILJET_TIMEOUT_SECONDS) as resp:
+            status = resp.getcode()
+            resp_data = json.loads(resp.read().decode("utf-8"))
+
+        # Mailjet can return HTTP 200 even when an individual message
+        # within the batch failed — check the per-message Status too.
+        messages = resp_data.get("Messages", [])
+        msg_status = messages[0].get("Status") if messages else None
+        if status == 200 and msg_status == "success":
+            logger.info("Email accepted by Mailjet for %s: %s", to_email, subject)
+            return True
+
+        logger.error(
+            "Mailjet did not accept email to %s (http_status=%s, message_status=%s)",
+            to_email, status, msg_status,
         )
         return False
 
-    try:
-        msg = MIMEMultipart("alternative")
-        msg["Subject"] = subject
-        msg["From"] = f"{cfg['from_name']} <{cfg['from_email']}>"
-        msg["To"] = to_email
-        if body_text:
-            msg.attach(MIMEText(body_text, "plain"))
-        msg.attach(MIMEText(body_html, "html"))
-
-        with smtplib.SMTP(cfg["host"], cfg["port"]) as server:
-            server.ehlo()
-            if cfg["tls"]:
-                server.starttls()
-                server.ehlo()
-            if cfg["user"] and cfg["password"]:
-                server.login(cfg["user"], cfg["password"])
-            server.sendmail(cfg["from_email"], to_email, msg.as_string())
-        logger.info("Email sent to %s: %s", to_email, subject)
-        return True
+    except urllib.error.HTTPError as exc:
+        # 401 = bad API key/secret. 400 = malformed request or unverified
+        # sender. 429 = rate limited. 5xx = provider-side error. We only
+        # log the status code and Mailjet's short error identifier — never
+        # the request body (contains the message content/links) and never
+        # the credentials.
+        try:
+            err_body = json.loads(exc.read().decode("utf-8"))
+            err_summary = err_body.get("ErrorMessage") or err_body.get("Messages", [{}])[0].get("Errors", [{}])
+        except Exception:
+            err_summary = "<unparseable error body>"
+        logger.error("Mailjet API error sending to %s: HTTP %s — %s", to_email, exc.code, err_summary)
+        return False
+    except (socket.timeout, TimeoutError):
+        logger.error("Mailjet API request timed out sending to %s", to_email)
+        return False
+    except urllib.error.URLError as exc:
+        logger.error("Mailjet API connection failed sending to %s: %s", to_email, exc.reason)
+        return False
     except Exception as exc:
-        logger.error("Email send failed to %s: %s", to_email, exc)
+        logger.exception("Unexpected error sending email to %s via Mailjet", to_email)
         return False
 
 

@@ -48,17 +48,18 @@ services:
         value: "https://car-parts-platform-2.onrender.com"
       - key: FRONTEND_URL
         value: "https://car-parts-platform-2.onrender.com"
-      - key: SMTP_HOST
-        value: ""
-      - key: SMTP_PORT
-        value: "587"
-      - key: SMTP_USER
-        value: ""
-      - key: SMTP_PASSWORD
+      # Email is sent via the Mailjet HTTPS API (not SMTP — Render's free
+      # tier blocks/throttles outbound SMTP ports, which is what caused
+      # the "Connection timed out" email failures). Get these two from
+      # Mailjet → Account Settings → API Key Management; enter the real
+      # values in the Render dashboard, not here.
+      - key: MAILJET_API_KEY
         sync: false
+      - key: MAILJET_SECRET_KEY
+        sync: false
+      # Sender identity for outgoing mail — SMTP_FROM must be a sender
+      # address verified in your Mailjet account. Not SMTP settings.
       - key: SMTP_FROM
         value: "noreply@partora.com"
       - key: SMTP_FROM_NAME
         value: "Partora"
-      - key: SMTP_TLS
-        value: "true"

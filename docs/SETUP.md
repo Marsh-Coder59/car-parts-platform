@@ -297,13 +297,10 @@ postgresql://partora_user:password@localhost:5432/partora_db?sslmode=require
 | `SESSION_EXPIRE_HOURS` | No | Session lifetime (default: 24) |
 | `ALLOWED_ORIGINS` | No | CORS origins (comma-separated) |
 | `FRONTEND_URL` | No | Frontend URL for email links |
-| `SMTP_HOST` | No | SMTP server (email sending) |
-| `SMTP_PORT` | No | SMTP port (default: 587) |
-| `SMTP_USER` | No | SMTP username |
-| `SMTP_PASSWORD` | No | SMTP password |
-| `SMTP_FROM` | No | From email address |
-| `SMTP_FROM_NAME` | No | From display name |
-| `SMTP_TLS` | No | Use STARTTLS (default: true) |
+| `MAILJET_API_KEY` | No | Mailjet API key — email sending (Mailjet HTTPS API, not SMTP) |
+| `MAILJET_SECRET_KEY` | No | Mailjet secret key |
+| `SMTP_FROM` | No | Sender email address (must be verified in Mailjet) |
+| `SMTP_FROM_NAME` | No | Sender display name |
 
 ### Frontend (.env)
 
@@ -342,5 +339,5 @@ All instances across the entire app update automatically — nav, admin sidebar,
 | `Cannot connect to database` | Check PostgreSQL is running and credentials are correct |
 | `npm install fails` | Ensure Node.js 18+ is installed |
 | Session expires immediately | Check `SESSION_EXPIRE_HOURS` in `.env` |
-| Emails not sending | Add SMTP credentials to backend `.env` |
+| Emails not sending | Add `MAILJET_API_KEY` / `MAILJET_SECRET_KEY` to backend `.env` (logs the email instead if unset) |
 | Bank details not showing | Configure them in Admin → Settings |

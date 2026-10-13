@@ -45,7 +45,7 @@
 - Transactional checkout with `SELECT FOR UPDATE`
 - Full audit logging
 - In-app notifications
-- SMTP email service (stdlib, no external dep)
+- Email service: Mailjet HTTPS Send API (stdlib `urllib`, no external dep)
 - Rate limiting on auth endpoints
 - Security headers middleware
 
