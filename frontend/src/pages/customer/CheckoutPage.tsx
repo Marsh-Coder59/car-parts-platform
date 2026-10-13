@@ -1,5 +1,5 @@
 import { useEffect, useState } from 'react';
-import { useNavigate } from 'react-router-dom';
+import { Link, useNavigate } from 'react-router-dom';
 import { useForm } from 'react-hook-form';
 import { MapPin, Tag, CheckCircle } from 'lucide-react';
 import { cartService } from '../../services/cart.service';
@@ -106,7 +106,7 @@ export default function CheckoutPage() {
               </h2>
               {addresses.length === 0 ? (
                 <div className="text-sm text-gray-500 dark:text-gray-400">
-                  <p>No addresses saved. <a href="/account/addresses" className="text-brand-600 hover:underline">Add one first</a>.</p>
+                  <p>No addresses saved. <Link to="/account/addresses" className="text-brand-600 hover:underline">Add one first</Link>.</p>
                 </div>
               ) : (
                 <div className="space-y-2">

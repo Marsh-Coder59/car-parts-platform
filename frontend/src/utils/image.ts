@@ -1,12 +1,12 @@
 import type React from 'react';
 
 // Resolves an image path/URL returned by the backend (e.g.
-// "/static/products/prod_1_abc.png") into a URL the browser can actually
-// load.
+// "/api/images/123") into a URL the browser can actually load.
 //
 // Root cause this fixes: the backend always returns media-relative paths
-// like "/static/...", which product cards, category cards, the product
-// edit form, and the logo were rendering directly as <img src="...">.
+// like "/api/images/123", which product cards, category cards, the
+// product edit form, and the logo were rendering directly as
+// <img src="...">.
 // A relative path in an <img> tag resolves against the CURRENT PAGE's
 // origin, i.e. the frontend dev server (http://localhost:3000), not the
 // backend (http://localhost:8000) that actually serves /static — so every
@@ -22,8 +22,8 @@ export function resolveImageUrl(path: string | null | undefined): string | undef
   // Already absolute (http(s)://), or a local blob:/data: URI (e.g. an
   // unsaved file preview from FileReader) — use as-is.
   if (/^(https?:)?\/\//i.test(path) || path.startsWith('data:') || path.startsWith('blob:')) return path;
-  // Backend-relative path (e.g. "/static/products/x.png") — anchor it to
-  // the backend origin rather than the current page origin.
+  // Backend-relative path (e.g. "/api/images/123") — anchor it to the
+  // backend origin rather than the current page origin.
   return `${API_ORIGIN}${path.startsWith('/') ? '' : '/'}${path}`;
 }
 

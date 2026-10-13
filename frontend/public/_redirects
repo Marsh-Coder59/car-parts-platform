@@ -1,0 +1,9 @@
+# SPA fallback for Render Static Sites (same mechanism as Netlify).
+# Without this, any DIRECT page load of a client-side route (an email
+# verification link, a bookmarked /checkout URL, a browser refresh on
+# any page other than "/") hits Render's static host before React
+# Router ever runs — the host has no physical file at that path, so it
+# returns its own "Not Found" page instead of your app. This routes
+# every request to index.html and lets React Router take over from
+# there (200, not a redirect, so the URL in the address bar is kept).
+/*   /index.html   200

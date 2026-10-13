@@ -10,7 +10,7 @@ import json
 from pathlib import Path
 from datetime import datetime, timedelta, timezone, date
 from decimal import Decimal, ROUND_HALF_UP, InvalidOperation
-import os, shutil
+import os
 from fastapi import UploadFile, File
 from fastapi.staticfiles import StaticFiles
 from typing import Optional, List, Any
@@ -22,6 +22,7 @@ from pydantic import BaseModel, EmailStr, field_validator, model_validator
 from passlib.context import CryptContext
 from jose import jwt, JWTError
 
+import psycopg2
 from database import get_db_connection
 
 # ============================================================
@@ -6066,11 +6067,104 @@ def get_products_for_vehicle(
 
 
 # ============================================================
+# PERSISTENT IMAGE STORAGE — DB-backed (see migration_005)
+# ============================================================
+# Render's free-tier web service filesystem is EPHEMERAL: anything
+# written to backend/static is wiped on every redeploy and after the
+# service spins down from inactivity. That's why uploaded logos,
+# banners, category images, product images, and avatars were going
+# blank in production even though the upload itself "succeeded" and
+# worked fine locally. Images are now stored as bytes in Postgres
+# (which persists normally) and served back out via GET
+# /api/images/{id} instead of as static files.
+#
+# The old /static mount (below, unchanged) is left in place only so
+# any URL already saved in the database from before this change
+# doesn't hard-error — it will still 404 if its underlying file has
+# already been wiped, exactly as before. Existing broken images (logo,
+# banner, categories, products, avatars) need to be re-uploaded ONCE
+# after this deploys; from then on they persist across redeploys.
+
+_MAX_UPLOAD_IMAGE_BYTES = 5 * 1024 * 1024  # 5MB
+
+
+def _store_uploaded_image(file: UploadFile, uploaded_by: Optional[int] = None) -> dict:
+    """
+    Validates an uploaded image and stores its bytes in Postgres.
+    Returns {"id": <int>, "url": "/api/images/<id>"}. Raises
+    HTTPException (400/500) on invalid input or a storage failure —
+    callers should let that propagate rather than catch-and-continue,
+    so a failed upload never gets silently treated as successful.
+    """
+    if not file.content_type or not file.content_type.startswith("image/"):
+        raise HTTPException(status_code=400, detail="File must be an image")
+
+    data = file.file.read()
+    if not data:
+        raise HTTPException(status_code=400, detail="Uploaded file is empty")
+    if len(data) > _MAX_UPLOAD_IMAGE_BYTES:
+        raise HTTPException(status_code=400, detail="Image must be smaller than 5MB")
+
+    conn = None
+    try:
+        conn = get_db_connection()
+        cur = conn.cursor()
+        cur.execute(
+            """
+            INSERT INTO uploaded_images (filename, content_type, data, size_bytes, uploaded_by, created_at)
+            VALUES (%s, %s, %s, %s, %s, NOW())
+            RETURNING id
+            """,
+            (file.filename or "image", file.content_type, psycopg2.Binary(data), len(data), uploaded_by),
+        )
+        image_id = cur.fetchone()[0]
+        conn.commit()
+        cur.close()
+        return {"id": image_id, "url": f"/api/images/{image_id}"}
+    except HTTPException:
+        raise
+    except Exception:
+        if conn:
+            conn.rollback()
+        logger.exception("Failed to store uploaded image")
+        raise HTTPException(status_code=500, detail="Image upload failed")
+    finally:
+        if conn:
+            conn.close()
+
+
+@app.get("/api/images/{image_id}")
+def get_uploaded_image(image_id: int):
+    """Serves a DB-stored image. Public — these are branding/product/avatar
+    images meant to be visible on the public storefront."""
+    conn = None
+    try:
+        conn = get_db_connection()
+        cur = conn.cursor()
+        cur.execute("SELECT data, content_type FROM uploaded_images WHERE id = %s", (image_id,))
+        row = cur.fetchone()
+        cur.close()
+        if not row:
+            raise HTTPException(status_code=404, detail="Image not found")
+        data, content_type = row
+        return Response(
+            content=bytes(data),
+            media_type=content_type,
+            headers={"Cache-Control": "public, max-age=31536000, immutable"},
+        )
+    except HTTPException:
+        raise
+    except Exception:
+        logger.exception("Failed to serve uploaded image %s", image_id)
+        raise HTTPException(status_code=500, detail="Failed to load image")
+    finally:
+        if conn:
+            conn.close()
+
+
+# ============================================================
 # USER AVATAR UPLOAD
 # ============================================================
-
-_AVATAR_DIR = os.path.join(os.path.dirname(__file__), "static", "avatars")
-os.makedirs(_AVATAR_DIR, exist_ok=True)
 
 @app.post("/api/users/avatar")
 async def upload_user_avatar(
@@ -6078,14 +6172,8 @@ async def upload_user_avatar(
     current_user: dict = Depends(get_current_user),
 ):
     """Upload or replace the current user's profile picture."""
-    if not avatar.content_type or not avatar.content_type.startswith("image/"):
-        raise HTTPException(status_code=400, detail="File must be an image")
-    ext = os.path.splitext(avatar.filename or "avatar.jpg")[1] or ".jpg"
-    filename = f"user_{current_user['user_id']}{ext}"
-    filepath = os.path.join(_AVATAR_DIR, filename)
-    with open(filepath, "wb") as f:
-        shutil.copyfileobj(avatar.file, f)
-    avatar_url = f"/static/avatars/{filename}"
+    stored = _store_uploaded_image(avatar, uploaded_by=current_user["user_id"])
+    avatar_url = stored["url"]
     conn = None
     try:
         conn = get_db_connection()
@@ -6109,27 +6197,18 @@ async def upload_user_avatar(
 # ============================================================
 # ADMIN SETTINGS IMAGE UPLOAD
 # ============================================================
-
-_SETTINGS_IMG_DIR = os.path.join(os.path.dirname(__file__), "static", "settings")
-os.makedirs(_SETTINGS_IMG_DIR, exist_ok=True)
+# Also used for category images (AdminCategoriesPage posts here too —
+# this is the project's one generic "upload an image, get back a URL"
+# endpoint, not settings-specific despite the path).
 
 @app.post("/api/admin/settings/upload-image")
 async def upload_settings_image(
     file: UploadFile = File(...),
     current_user: dict = Depends(require_staff_or_admin),
 ):
-    """Upload a branding image (logo, favicon, banner) for the site settings."""
-    if not file.content_type or not file.content_type.startswith("image/"):
-        raise HTTPException(status_code=400, detail="File must be an image")
-    ext = os.path.splitext(file.filename or "image.png")[1] or ".png"
-    # Use the original filename stem so re-uploads replace the same file
-    import uuid as _uuid
-    safe_name = f"{_uuid.uuid4().hex}{ext}"
-    filepath = os.path.join(_SETTINGS_IMG_DIR, safe_name)
-    with open(filepath, "wb") as f:
-        shutil.copyfileobj(file.file, f)
-    url = f"/static/settings/{safe_name}"
-    return {"url": url}
+    """Upload a branding image (logo, favicon, banner) or category image."""
+    stored = _store_uploaded_image(file, uploaded_by=current_user["user_id"])
+    return {"url": stored["url"]}
 
 
 
@@ -6187,9 +6266,6 @@ def admin_delete_review(review_id: int, current_user: dict = Depends(require_adm
 # PRODUCT IMAGE UPLOAD (replaces URL-only approach)
 # ============================================================
 
-_PRODUCT_IMG_DIR = os.path.join(os.path.dirname(__file__), "static", "products")
-os.makedirs(_PRODUCT_IMG_DIR, exist_ok=True)
-
 @app.post("/api/products/{product_id}/images/upload")
 async def upload_product_image(
     product_id: int,
@@ -6199,15 +6275,8 @@ async def upload_product_image(
 ):
     # Convert string "true"/"false" from multipart form to bool
     is_primary_bool = is_primary.lower() in ("true", "1", "yes")
-    if not file.content_type or not file.content_type.startswith("image/"):
-        raise HTTPException(status_code=400, detail="File must be an image")
-    import uuid as _uuid
-    ext = os.path.splitext(file.filename or "img.jpg")[1] or ".jpg"
-    filename = f"prod_{product_id}_{_uuid.uuid4().hex[:8]}{ext}"
-    filepath = os.path.join(_PRODUCT_IMG_DIR, filename)
-    with open(filepath, "wb") as f:
-        shutil.copyfileobj(file.file, f)
-    image_url = f"/static/products/{filename}"
+    stored = _store_uploaded_image(file, uploaded_by=current_user["user_id"])
+    image_url = stored["url"]
     conn = None
     try:
         conn = get_db_connection()
