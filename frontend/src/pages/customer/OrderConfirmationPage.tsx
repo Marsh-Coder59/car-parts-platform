@@ -38,8 +38,15 @@ export default function OrderConfirmationPage() {
     </div>
   );
 
-  const depositRequired = bankDetails.deposit_amount ?? (bankDetails.total_amount * 0.75);
+  // Defensive client-side fallback, mirroring the same backfill the
+  // backend now does — belt-and-suspenders in case deposit/balance ever
+  // come back as 0 on a total that clearly isn't (stale pre-existing
+  // order data, etc.), so the UI never shows a misleading "$0.00" next
+  // to "Deposit Required (75%)".
+  const depositAmount = bankDetails.deposit_amount || (bankDetails.total_amount > 0 ? bankDetails.total_amount * 0.75 : 0);
+  const balanceAmount = bankDetails.balance_amount || (bankDetails.total_amount > 0 ? bankDetails.total_amount * 0.25 : 0);
   const hasBankDetails = bankDetails.bank?.bank_name || bankDetails.bank?.account_number;
+  const hasDiscount = !!bankDetails.discount_amount && bankDetails.discount_amount > 0;
 
   return (
     <div className="max-w-2xl mx-auto px-4 sm:px-6 py-10">
@@ -56,17 +63,37 @@ export default function OrderConfirmationPage() {
       <div className="bg-white dark:bg-dark-800 rounded-2xl border border-gray-100 dark:border-dark-700 p-6 mb-5">
         <h2 className="text-base font-bold text-gray-900 dark:text-gray-50 mb-4">Payment Summary</h2>
         <div className="space-y-3">
-          <div className="flex justify-between text-sm">
+          {bankDetails.subtotal != null && (
+            <div className="flex justify-between text-sm">
+              <span className="text-gray-600 dark:text-gray-300">Subtotal</span>
+              <span className="text-gray-900 dark:text-gray-50">{formatCurrency(bankDetails.subtotal)}</span>
+            </div>
+          )}
+          {!!bankDetails.delivery_fee && (
+            <div className="flex justify-between text-sm">
+              <span className="text-gray-600 dark:text-gray-300">Delivery Fee</span>
+              <span className="text-gray-900 dark:text-gray-50">{formatCurrency(bankDetails.delivery_fee)}</span>
+            </div>
+          )}
+          {hasDiscount && (
+            <div className="flex justify-between text-sm">
+              <span className="text-gray-600 dark:text-gray-300">
+                Discount{bankDetails.coupon_code ? ` (${bankDetails.coupon_code})` : ''}
+              </span>
+              <span className="text-green-600 font-medium">-{formatCurrency(bankDetails.discount_amount!)}</span>
+            </div>
+          )}
+          <div className="flex justify-between text-sm pt-2 border-t border-gray-100 dark:border-dark-700">
             <span className="text-gray-600 dark:text-gray-300">Order Total</span>
             <span className="font-semibold text-gray-900 dark:text-gray-50">{formatCurrency(bankDetails.total_amount)}</span>
           </div>
           <div className="flex justify-between text-sm">
             <span className="text-gray-600 dark:text-gray-300">Deposit Required (75%)</span>
-            <span className="font-bold text-brand-600 text-base">{formatCurrency(bankDetails.deposit_amount)}</span>
+            <span className="font-bold text-brand-600 text-base">{formatCurrency(depositAmount)}</span>
           </div>
           <div className="flex justify-between text-sm">
             <span className="text-gray-600 dark:text-gray-300">Balance Due After Delivery (25%)</span>
-            <span className="font-semibold text-gray-900 dark:text-gray-50">{formatCurrency(bankDetails.balance_amount)}</span>
+            <span className="font-semibold text-gray-900 dark:text-gray-50">{formatCurrency(balanceAmount)}</span>
           </div>
         </div>
       </div>
@@ -109,7 +136,7 @@ export default function OrderConfirmationPage() {
       <div className="bg-blue-50 rounded-xl border border-blue-100 p-5 mb-6 text-sm text-blue-900">
         <p className="font-semibold mb-2">Next Steps:</p>
         <ol className="list-decimal pl-4 space-y-1.5">
-          <li>Transfer <strong>{formatCurrency(bankDetails.deposit_amount)}</strong> to the account above.</li>
+          <li>Transfer <strong>{formatCurrency(depositAmount)}</strong> to the account above.</li>
           <li>Use your order number <strong>{bankDetails.order_number}</strong> as the payment reference.</li>
           <li>Come back to this order and submit your payment reference number.</li>
           <li>Our team will verify and confirm your order.</li>

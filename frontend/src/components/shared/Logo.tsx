@@ -22,29 +22,56 @@ const sizeMap = {
   lg: { img: 52, text: 'text-4xl', sub: 'text-xs' },
 };
 
-// Simple in-memory cache so we don't refetch on every render
+// Simple in-memory cache so we don't refetch on every render/mount — BUT
+// it must be invalidated the moment an admin saves new branding, or every
+// already-mounted Logo (and the browser tab's favicon) keeps showing the
+// old image until a full page reload. invalidateBrandingCache() below
+// clears the cache and tells every currently-mounted Logo to refetch
+// immediately, which is what makes "Save Changes" actually take effect
+// without the user having to reload the page.
 let _cachedLogoUrl: string | null | undefined = undefined;
 let _cachedFaviconUrl: string | null | undefined = undefined;
+const _listeners = new Set<() => void>();
+
+/** Call after a successful branding save (logo/favicon) so every mounted
+ *  Logo — storefront header, admin sidebar, login/register pages, etc. —
+ *  updates immediately instead of showing the stale cached image. */
+export function invalidateBrandingCache() {
+  _cachedLogoUrl = undefined;
+  _cachedFaviconUrl = undefined;
+  _listeners.forEach(fn => fn());
+}
 
 export default function Logo({ size = 'md', variant = 'full', className = '', onDark = false }: LogoProps) {
   const [logoUrl, setLogoUrl] = useState<string | null>(_cachedLogoUrl ?? null);
   const { img, text, sub } = sizeMap[size];
 
   useEffect(() => {
-    if (_cachedLogoUrl !== undefined) {
-      setLogoUrl(_cachedLogoUrl);
-      // Also update favicon if cached
-      if (_cachedFaviconUrl) updateFavicon(_cachedFaviconUrl);
-      return;
+    let active = true;
+
+    function load() {
+      if (_cachedLogoUrl !== undefined) {
+        setLogoUrl(_cachedLogoUrl);
+        if (_cachedFaviconUrl) updateFavicon(_cachedFaviconUrl);
+        return;
+      }
+      adminService.getPublicSettings().then((s: any) => {
+        if (!active) return;
+        _cachedLogoUrl = resolveImageUrl(s.logo_url) ?? null;
+        _cachedFaviconUrl = resolveImageUrl(s.favicon_url) ?? null;
+        setLogoUrl(_cachedLogoUrl);
+        if (_cachedFaviconUrl) updateFavicon(_cachedFaviconUrl);
+      }).catch(() => {
+        if (active) _cachedLogoUrl = null;
+      });
     }
-    adminService.getPublicSettings().then((s: any) => {
-      _cachedLogoUrl = resolveImageUrl(s.logo_url) ?? null;
-      _cachedFaviconUrl = resolveImageUrl(s.favicon_url) ?? null;
-      setLogoUrl(_cachedLogoUrl);
-      if (_cachedFaviconUrl) updateFavicon(_cachedFaviconUrl);
-    }).catch(() => {
-      _cachedLogoUrl = null;
-    });
+
+    load();
+    _listeners.add(load);
+    return () => {
+      active = false;
+      _listeners.delete(load);
+    };
   }, []);
 
   return (

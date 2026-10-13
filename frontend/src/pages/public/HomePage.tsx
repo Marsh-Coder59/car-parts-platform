@@ -3,6 +3,7 @@ import { Link } from 'react-router-dom';
 import { ArrowRight, Shield, Truck, HeadphonesIcon, Star, ChevronRight } from 'lucide-react';
 import { productsService } from '../../services/products.service';
 import { categoriesService } from '../../services/products.service';
+import { adminService } from '../../services/admin.service';
 import { resolveImageUrl, onImageError } from '../../utils/image';
 import { SkeletonCard } from '../../components/ui/Skeleton';
 import ProductCard from '../../components/shared/ProductCard';
@@ -12,21 +13,31 @@ export default function HomePage() {
   const [featured, setFeatured] = useState<ProductListItem[]>([]);
   const [categories, setCategories] = useState<Category[]>([]);
   const [loading, setLoading] = useState(true);
+  // Admin-configured homepage banner. Was previously saved by the admin
+  // settings page but never actually read/rendered anywhere — this was
+  // the "home banner doesn't work" bug. Fetched fresh on every mount (not
+  // cached) so a saved change shows up on next visit/navigation.
+  const [bannerUrl, setBannerUrl] = useState<string | null>(null);
 
   useEffect(() => {
     Promise.all([
       productsService.list({ status: 'ACTIVE', page: 1, page_size: 8 }),
       categoriesService.list(),
-    ]).then(([prod, cats]) => {
+      adminService.getPublicSettings(),
+    ]).then(([prod, cats, settings]: [any, any, any]) => {
       setFeatured(prod.products);
-      setCategories(cats.filter(c => c.is_active).slice(0, 8));
+      setCategories(cats.filter((c: Category) => c.is_active).slice(0, 8));
+      setBannerUrl(resolveImageUrl(settings?.banner_url) ?? null);
     }).finally(() => setLoading(false));
   }, []);
 
   return (
     <div>
       {/* Hero */}
-      <section className="bg-gradient-to-br from-gray-900 via-gray-800 to-gray-900 text-white">
+      <section
+        className="relative bg-gradient-to-br from-gray-900 via-gray-800 to-gray-900 text-white bg-cover bg-center"
+        style={bannerUrl ? { backgroundImage: `linear-gradient(to bottom right, rgba(17,24,39,0.85), rgba(31,41,55,0.85)), url(${bannerUrl})` } : undefined}
+      >
         <div className="max-w-7xl mx-auto px-4 sm:px-6 py-20 lg:py-28">
           <div className="max-w-2xl">
             <p className="text-brand-400 text-sm font-semibold tracking-widest uppercase mb-4">

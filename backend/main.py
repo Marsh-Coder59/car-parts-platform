@@ -3058,18 +3058,19 @@ def place_order(body: CheckoutRequest, request: Request, current_user: dict = De
         balance_amount = total_amount - deposit_amount
 
         order_number = _generate_order_number()
+        coupon_code_used = body.coupon_code.strip().upper() if (coupon_id and body.coupon_code) else None
 
         # Create order
         cur.execute(
             """
             INSERT INTO orders (order_number, user_id, subtotal, delivery_fee, discount_amount,
-                                total_amount, deposit_percentage, deposit_amount, deposit_paid,
+                                coupon_code, total_amount, deposit_percentage, deposit_amount, deposit_paid,
                                 balance_percentage, balance_amount, balance_paid,
                                 payment_status, order_status, shipping_address_id, created_at, updated_at)
-            VALUES (%s,%s,%s,%s,%s,%s,%s,%s,FALSE,%s,%s,FALSE,'PENDING','AWAITING_DEPOSIT',%s,NOW(),NOW())
+            VALUES (%s,%s,%s,%s,%s,%s,%s,%s,%s,FALSE,%s,%s,FALSE,'PENDING','AWAITING_DEPOSIT',%s,NOW(),NOW())
             RETURNING id
             """,
-            (order_number, user_id, subtotal, delivery_fee, discount_amount,
+            (order_number, user_id, subtotal, delivery_fee, discount_amount, coupon_code_used,
              total_amount, deposit_pct, deposit_amount, balance_pct, balance_amount,
              body.shipping_address_id),
         )
@@ -3467,7 +3468,12 @@ def get_bank_details(order_id: int, current_user: dict = Depends(get_current_use
         user_id = current_user["user_id"]
         role = current_user["role"]
 
-        cur.execute("SELECT id, order_number, total_amount, deposit_amount, balance_amount, deposit_paid, balance_paid, order_status, user_id FROM orders WHERE id=%s", (order_id,))
+        cur.execute(
+            "SELECT id, order_number, total_amount, deposit_amount, balance_amount, deposit_paid, "
+            "balance_paid, order_status, user_id, subtotal, delivery_fee, discount_amount, coupon_code "
+            "FROM orders WHERE id=%s",
+            (order_id,),
+        )
         order = cur.fetchone()
         if not order:
             raise HTTPException(status_code=404, detail="Order not found")
@@ -3478,14 +3484,29 @@ def get_bank_details(order_id: int, current_user: dict = Depends(get_current_use
         bank = cur.fetchone()
         cur.close()
 
+        total_amount = to_decimal(order[2])
+        deposit_amount = to_decimal(order[3])
+        balance_amount = to_decimal(order[4])
+        # Defensive backfill for any pre-existing order rows whose
+        # deposit/balance were stored as 0 (e.g. from before this 75/25
+        # calculation existed) — recompute from the total rather than
+        # show a misleading $0.00 that doesn't match "Deposit Required (75%)".
+        if total_amount > 0 and deposit_amount == 0 and balance_amount == 0:
+            deposit_amount = round_money(total_amount * Decimal("75") / Decimal("100"))
+            balance_amount = total_amount - deposit_amount
+
         return {
             "order_number": order[1],
-            "total_amount": safe_json(order[2]),
-            "deposit_amount": safe_json(order[3]),
-            "balance_amount": safe_json(order[4]),
+            "total_amount": safe_json(total_amount),
+            "deposit_amount": safe_json(deposit_amount),
+            "balance_amount": safe_json(balance_amount),
             "deposit_paid": order[5],
             "balance_paid": order[6],
             "order_status": order[7],
+            "subtotal": safe_json(order[9]) if len(order) > 9 else None,
+            "delivery_fee": safe_json(order[10]) if len(order) > 10 else None,
+            "discount_amount": safe_json(order[11]) if len(order) > 11 else None,
+            "coupon_code": order[12] if len(order) > 12 else None,
             "bank": {
                 "bank_name": bank[0] if bank else None,
                 "account_name": bank[1] if bank else None,

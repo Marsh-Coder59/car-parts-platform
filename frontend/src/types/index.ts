@@ -256,6 +256,10 @@ export interface BankDetails {
   deposit_paid: boolean;
   balance_paid: boolean;
   order_status: OrderStatus;
+  subtotal?: number | null;
+  delivery_fee?: number | null;
+  discount_amount?: number | null;
+  coupon_code?: string | null;
   bank: {
     bank_name?: string;
     account_name?: string;

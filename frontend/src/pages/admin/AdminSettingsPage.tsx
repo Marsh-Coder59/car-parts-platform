@@ -10,6 +10,7 @@ import type { AdminSettings } from '../../types';
 import toast from 'react-hot-toast';
 import { apiClient } from '../../services/api';
 import { resolveImageUrl, onImageError } from '../../utils/image';
+import { invalidateBrandingCache } from '../../components/shared/Logo';
 
 // ── image upload helper ──────────────────────────────────────────────────────
 interface ImageUploadFieldProps {
@@ -148,6 +149,15 @@ export default function AdminSettingsPage() {
         default_delivery_fee: parseFloat(default_delivery_fee) || 0,
         free_delivery_threshold: free_delivery_threshold || undefined,
       });
+
+      // Logo/favicon are cached in memory (see Logo.tsx) so every mounted
+      // instance doesn't refetch on every render — without this, "Save
+      // Changes" would silently do nothing visible until a full page
+      // reload. This makes every Logo on screen (header, sidebar, etc.)
+      // refetch and update immediately, in this tab. Other open tabs/other
+      // visitors still pick it up on their next page load, same as any
+      // other saved setting — there's no realtime push to other sessions.
+      invalidateBrandingCache();
 
       toast.success('Settings saved');
     } catch (err) {
