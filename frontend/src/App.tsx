@@ -29,6 +29,7 @@ import CheckoutPage from './pages/customer/CheckoutPage';
 import OrderConfirmationPage from './pages/customer/OrderConfirmationPage';
 import OrdersPage from './pages/customer/OrdersPage';
 import OrderDetailPage from './pages/customer/OrderDetailPage';
+import TrackingPage from './pages/customer/TrackingPage';
 import AccountPage from './pages/customer/AccountPage';
 import WishlistPage from './pages/customer/WishlistPage';
 import NotificationsPage from './pages/customer/NotificationsPage';
@@ -92,6 +93,7 @@ export default function App() {
                 <Route path="/orders/:id/confirmation" element={<CustomerRoute><OrderConfirmationPage /></CustomerRoute>} />
                 <Route path="/orders" element={<CustomerRoute><OrdersPage /></CustomerRoute>} />
                 <Route path="/orders/:id" element={<CustomerRoute><OrderDetailPage /></CustomerRoute>} />
+                <Route path="/tracking" element={<CustomerRoute><TrackingPage /></CustomerRoute>} />
                 <Route path="/account" element={<CustomerRoute><AccountPage /></CustomerRoute>} />
                 <Route path="/account/addresses" element={<CustomerRoute><AccountPage /></CustomerRoute>} />
                 <Route path="/wishlist" element={<CustomerRoute><WishlistPage /></CustomerRoute>} />

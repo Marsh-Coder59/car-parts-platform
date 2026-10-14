@@ -1,6 +1,6 @@
 import { useState } from 'react';
 import { Link, useNavigate } from 'react-router-dom';
-import { ShoppingCart, Heart, Bell, User, Search, Menu, X, LogOut, Home } from 'lucide-react';
+import { ShoppingCart, Heart, Bell, User, Search, Menu, X, LogOut, Home, Truck } from 'lucide-react';
 import Logo from '../shared/Logo';
 import { useAuth } from '../../context/AuthContext';
 import { useCart } from '../../context/CartContext';
@@ -60,6 +60,7 @@ export default function PublicNav() {
                 {isStaffOrAdmin && (
                   <Link to="/admin" className="px-3 py-2 text-sm font-semibold text-brand-600 hover:text-brand-700 hover:bg-brand-50 dark:hover:bg-brand-900/30 rounded-lg transition-colors">Admin</Link>
                 )}
+                <Link to="/tracking" title="Track Order" className="relative p-2 text-gray-600 dark:text-gray-300 hover:text-gray-900 dark:hover:text-gray-50 hover:bg-gray-50 dark:hover:bg-dark-700 rounded-lg transition-colors"><Truck className="h-5 w-5" /></Link>
                 <Link to="/wishlist" className="relative p-2 text-gray-600 dark:text-gray-300 hover:text-gray-900 dark:hover:text-gray-50 hover:bg-gray-50 dark:hover:bg-dark-700 rounded-lg transition-colors"><Heart className="h-5 w-5" /></Link>
                 <Link to="/cart" className="relative p-2 text-gray-600 dark:text-gray-300 hover:text-gray-900 dark:hover:text-gray-50 hover:bg-gray-50 dark:hover:bg-dark-700 rounded-lg transition-colors">
                   <ShoppingCart className="h-5 w-5" />
@@ -117,6 +118,7 @@ export default function PublicNav() {
                 {isStaffOrAdmin && <Link to="/admin" onClick={() => setMenuOpen(false)} className="block px-4 py-2 text-sm font-semibold text-brand-600 hover:bg-brand-50 dark:hover:bg-brand-900/30 rounded-lg">Admin Panel</Link>}
                 <Link to="/account" onClick={() => setMenuOpen(false)} className="block px-4 py-2 text-sm font-medium text-gray-700 dark:text-gray-200 hover:bg-gray-50 dark:hover:bg-dark-700 rounded-lg">My Account</Link>
                 <Link to="/orders" onClick={() => setMenuOpen(false)} className="block px-4 py-2 text-sm font-medium text-gray-700 dark:text-gray-200 hover:bg-gray-50 dark:hover:bg-dark-700 rounded-lg">My Orders</Link>
+                <Link to="/tracking" onClick={() => setMenuOpen(false)} className="block px-4 py-2 text-sm font-medium text-gray-700 dark:text-gray-200 hover:bg-gray-50 dark:hover:bg-dark-700 rounded-lg">Track Order</Link>
                 <Link to="/wishlist" onClick={() => setMenuOpen(false)} className="block px-4 py-2 text-sm font-medium text-gray-700 dark:text-gray-200 hover:bg-gray-50 dark:hover:bg-dark-700 rounded-lg">Wishlist</Link>
                 <button onClick={() => { setMenuOpen(false); handleLogout(); }}
                   className="flex items-center gap-2 w-full px-4 py-2 text-sm font-medium text-red-600 hover:bg-red-50 dark:hover:bg-red-900/30 rounded-lg">
