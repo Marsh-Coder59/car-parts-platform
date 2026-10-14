@@ -1,7 +1,8 @@
-import { useEffect, useState } from 'react';
+import { useCallback, useEffect, useRef, useState } from 'react';
 import { Link } from 'react-router-dom';
 import { PackageSearch, ChevronDown } from 'lucide-react';
 import { ordersService } from '../../services/orders.service';
+import { useAuth } from '../../context/AuthContext';
 import { SkeletonLines } from '../../components/ui/Skeleton';
 import { OrderStatusBadge } from '../../components/ui/Badge';
 import OrderTrackingTimeline from '../../components/shared/OrderTrackingTimeline';
@@ -11,34 +12,84 @@ import type { Order, OrderListItem } from '../../types';
 const TERMINAL_STATUSES = ['COMPLETED', 'CANCELLED', 'REFUNDED', 'RETURNED'];
 
 export default function TrackingPage() {
+  const { isAuthenticated, user } = useAuth();
   const [allOrders, setAllOrders] = useState<OrderListItem[]>([]);
   const [selectedId, setSelectedId] = useState<number | null>(null);
   const [order, setOrder] = useState<Order | null>(null);
   const [loadingList, setLoadingList] = useState(true);
   const [loadingOrder, setLoadingOrder] = useState(false);
 
-  // Load the customer's orders, newest first (that's how the API already
-  // returns them), and default the selection to the most recent order
-  // that's still actively moving — falling back to the most recent order
-  // overall (e.g. already delivered/completed) if none are active.
+  // Scoped per account, the same way CartContext fixed the cart leaking
+  // across accounts on the same browser: tracks which user_id the current
+  // order list actually belongs to, so a response for a previous account
+  // can never be applied after switching accounts (covers both the race
+  // where a request is still in flight when the account changes, and the
+  // simpler case of this page just staying mounted across a logout/login
+  // with no full page reload in between).
+  const activeUserIdRef = useRef<number | string | null>(null);
+
+  const loadOrders = useCallback(async () => {
+    if (!isAuthenticated || !user || user.role !== 'CUSTOMER') {
+      activeUserIdRef.current = null;
+      setAllOrders([]);
+      setSelectedId(null);
+      setOrder(null);
+      setLoadingList(false);
+      return;
+    }
+    const requestedUserId = user.id;
+    activeUserIdRef.current = requestedUserId;
+    setLoadingList(true);
+    try {
+      const orders = await ordersService.list({ page_size: 50 });
+      if (activeUserIdRef.current !== requestedUserId) return; // a newer account switch already superseded this
+      setAllOrders(orders);
+      const active = orders.find(o => !TERMINAL_STATUSES.includes(o.order_status));
+      const defaultOrder = active ?? orders[0] ?? null;
+      setSelectedId(defaultOrder?.id ?? null);
+    } catch {
+      if (activeUserIdRef.current === requestedUserId) {
+        setAllOrders([]);
+        setSelectedId(null);
+      }
+    } finally {
+      if (activeUserIdRef.current === requestedUserId) {
+        setLoadingList(false);
+      }
+    }
+  }, [isAuthenticated, user]);
+
+  // Re-fetch (or clear) whenever auth state changes: login, logout, or
+  // switching to a different account in the same browser session.
   useEffect(() => {
-    ordersService.list({ page_size: 50 })
-      .then(orders => {
-        setAllOrders(orders);
-        const active = orders.find(o => !TERMINAL_STATUSES.includes(o.order_status));
-        const defaultOrder = active ?? orders[0] ?? null;
-        setSelectedId(defaultOrder?.id ?? null);
-      })
-      .finally(() => setLoadingList(false));
+    loadOrders();
+  }, [loadOrders]);
+
+  // Clear immediately on session expiry, before the next account can
+  // possibly render anything from this one.
+  useEffect(() => {
+    const handleExpired = () => {
+      activeUserIdRef.current = null;
+      setAllOrders([]);
+      setSelectedId(null);
+      setOrder(null);
+    };
+    window.addEventListener('session-expired', handleExpired);
+    return () => window.removeEventListener('session-expired', handleExpired);
   }, []);
 
   useEffect(() => {
-    if (!selectedId) { setOrder(null); return; }
+    if (!selectedId || !user) { setOrder(null); return; }
+    const requestedUserId = user.id;
     setLoadingOrder(true);
     ordersService.get(selectedId)
-      .then(setOrder)
-      .finally(() => setLoadingOrder(false));
-  }, [selectedId]);
+      .then(data => {
+        if (activeUserIdRef.current === requestedUserId) setOrder(data);
+      })
+      .finally(() => {
+        if (activeUserIdRef.current === requestedUserId) setLoadingOrder(false);
+      });
+  }, [selectedId, user]);
 
   if (loadingList) {
     return <div className="max-w-2xl mx-auto px-4 py-10"><SkeletonLines lines={8} /></div>;
