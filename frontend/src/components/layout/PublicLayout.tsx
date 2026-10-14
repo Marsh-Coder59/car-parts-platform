@@ -1,14 +1,18 @@
-import { Outlet } from 'react-router-dom';
+import { Outlet, useLocation } from 'react-router-dom';
 import PublicNav from './PublicNav';
 import { Link } from 'react-router-dom';
 import Logo from '../shared/Logo';
+import ErrorBoundary from '../shared/ErrorBoundary';
 
 export default function PublicLayout() {
+  const location = useLocation();
   return (
     <div className="min-h-screen bg-gray-50 dark:bg-dark-900 flex flex-col">
       <PublicNav />
       <main className="flex-1">
-        <Outlet />
+        <ErrorBoundary key={location.pathname}>
+          <Outlet />
+        </ErrorBoundary>
       </main>
       <footer className="bg-gray-900 text-gray-300 mt-16">
         <div className="max-w-7xl mx-auto px-4 sm:px-6 py-12">

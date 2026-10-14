@@ -74,7 +74,12 @@ export default function CheckoutPage() {
         notes: data.notes || undefined,
       });
       await refresh();
-      navigate(`/orders/${res.order_id}/confirmation`, { state: { orderData: res } });
+      // The confirmation page always fetches its own data from
+      // /api/orders/{id}/bank-details rather than reusing this response
+      // (place_order() returns a differently-shaped payload — see
+      // OrderConfirmationPage.tsx for why), so no navigation state is
+      // needed here.
+      navigate(`/orders/${res.order_id}/confirmation`);
     } catch (err) {
       setError(getErrorMessage(err));
     } finally {

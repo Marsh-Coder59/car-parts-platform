@@ -216,6 +216,36 @@ def create_notification(cursor, user_id: int, notif_type: str, title: str, messa
         logger.error("notification write failed: %s", exc)
 
 
+def notify_order_event(cursor, order_id: int, owner_id: int, notif_type: str, title: str, message: str):
+    """
+    Fires BOTH the in-app notification AND the email for an order event
+    (status change, dispatch, delivery, payment verified/rejected, etc.)
+    in one call. Every order-lifecycle notification should go through
+    this — not create_notification() directly — so a new event type
+    can't add the in-app bell and forget the email (which is exactly
+    what had happened: order status changes created notifications but
+    never sent an email, even though the email-sending function for it
+    already existed and was simply never called).
+
+    Uses the same cursor/transaction as the caller for the lookups
+    (cheap, same connection) but the email send itself never raises —
+    an email provider hiccup must not roll back the order update.
+    """
+    create_notification(cursor, owner_id, notif_type, title, message)
+    try:
+        cursor.execute("SELECT email, first_name FROM users WHERE id = %s", (owner_id,))
+        user_row = cursor.fetchone()
+        cursor.execute("SELECT order_number FROM orders WHERE id = %s", (order_id,))
+        order_row = cursor.fetchone()
+        if user_row and order_row and user_row[0]:
+            email, first_name = user_row
+            order_number = order_row[0]
+            html = f"<p>Hi {first_name or 'there'},</p><p>{message}</p><p>Order: <strong>{order_number}</strong></p>"
+            _send_order_notification_email(email, first_name or "there", order_number, title, html)
+    except Exception:
+        logger.exception("Failed to send order-event email for order %s", order_id)
+
+
 # ============================================================
 # AUTHENTICATION — DB session-based, NOT stale-JWT role trust
 # ============================================================
@@ -3119,9 +3149,9 @@ def place_order(body: CheckoutRequest, request: Request, current_user: dict = De
                         new_values={"order_number": order_number, "total": str(total_amount)},
                         ip_address=request.client.host if request.client else None)
 
-        # Notification
-        create_notification(cur, user_id, "ORDER_PLACED", f"Order {order_number} Placed",
-                            f"Your order {order_number} has been placed. Please pay the deposit of KES {deposit_amount}.")
+        # Notification + confirmation email
+        notify_order_event(cur, order_id, user_id, "ORDER_PLACED", f"Order {order_number} Placed",
+                           f"Your order {order_number} has been placed. Please pay the deposit of KES {deposit_amount}.")
 
         conn.commit()
         cur.close()
@@ -3378,8 +3408,20 @@ def update_order_status(
                         old_values={"status": current_status}, new_values={"status": new_status},
                         ip_address=request.client.host if request.client else None)
 
-        create_notification(cur, owner_id, "ORDER_STATUS_CHANGED", f"Order Status Updated",
-                            f"Your order has been updated to: {new_status}")
+        _STATUS_MESSAGES = {
+            "PROCESSING": ("Order Confirmed — Processing", "Your deposit has been confirmed and your order is now being processed."),
+            "READY_FOR_DISPATCH": ("Order Ready for Dispatch", "Your order has been packed and is ready to leave our warehouse."),
+            "DISPATCHED": ("Order Dispatched", "Your order is on its way! It has been dispatched for delivery."),
+            "OUT_FOR_DELIVERY": ("Out for Delivery", "Your order is out for delivery and should arrive soon."),
+            "DELIVERED": ("Order Delivered", "Your order has been delivered. The remaining balance is now due."),
+            "AWAITING_BALANCE": ("Balance Payment Due", "Your order was delivered — please settle the remaining balance."),
+            "COMPLETED": ("Order Completed", "Your order is complete. Thank you for shopping with us!"),
+            "CANCELLED": ("Order Cancelled", "Your order has been cancelled."),
+        }
+        notif_title, notif_message = _STATUS_MESSAGES.get(
+            new_status, ("Order Status Updated", f"Your order has been updated to: {new_status}")
+        )
+        notify_order_event(cur, order_id, owner_id, "ORDER_STATUS_CHANGED", notif_title, notif_message)
 
         conn.commit()
         cur.close()
@@ -3782,7 +3824,7 @@ def verify_payment(payment_id: int, body: PaymentVerification, request: Request,
 
         notif_title = "Deposit Verified" if pmt_type == "DEPOSIT" else "Balance Verified"
         notif_msg = f"Your {pmt_type.lower()} payment has been verified. Order status: {new_order_status}"
-        create_notification(cur, owner_id, "PAYMENT_VERIFIED", notif_title, notif_msg)
+        notify_order_event(cur, order_id, owner_id, "PAYMENT_VERIFIED", notif_title, notif_msg)
 
         conn.commit()
         cur.close()
@@ -3833,8 +3875,8 @@ def reject_payment(payment_id: int, body: PaymentRejection, request: Request, cu
         write_audit_log(cur, current_user["user_id"], "PAYMENT_REJECTED", "payments", payment_id,
                         new_values={"notes": body.notes},
                         ip_address=request.client.host if request.client else None)
-        create_notification(cur, owner_id, "PAYMENT_REJECTED", "Payment Rejected",
-                            f"Your {pmt_type.lower()} payment was rejected: {body.notes}. Please resubmit.")
+        notify_order_event(cur, order_id, owner_id, "PAYMENT_REJECTED", "Payment Rejected",
+                           f"Your {pmt_type.lower()} payment was rejected: {body.notes}. Please resubmit.")
 
         conn.commit()
         cur.close()

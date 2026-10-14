@@ -11,6 +11,7 @@ import Modal from '../../components/ui/Modal';
 import { Input, Textarea } from '../../components/ui/Input';
 import { getErrorMessage } from '../../services/api';
 import type { Order, BankDetails } from '../../types';
+import OrderTrackingTimeline from '../../components/shared/OrderTrackingTimeline';
 import toast from 'react-hot-toast';
 import clsx from 'clsx';
 
@@ -91,6 +92,11 @@ export default function OrderDetailPage() {
             </button>
           )}
         </div>
+      </div>
+
+      {/* Visual tracker: payment confirmed → dispatch → out for delivery → delivered */}
+      <div className="mb-5">
+        <OrderTrackingTimeline order={order} />
       </div>
 
       {/* Payment CTA */}

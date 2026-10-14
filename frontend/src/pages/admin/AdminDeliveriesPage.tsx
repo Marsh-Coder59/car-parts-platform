@@ -48,10 +48,12 @@ export default function AdminDeliveriesPage() {
                 {orders.map((o: any) => (
                   <tr key={o.id} className="hover:bg-gray-50 dark:hover:bg-dark-700">
                     <td className="px-4 py-3 font-mono text-xs text-gray-700 dark:text-gray-200">#{o.order_number || o.id}</td>
-                    <td className="px-4 py-3 text-gray-700 dark:text-gray-200">{o.customer_name || `${o.first_name ?? ''} ${o.last_name ?? ''}`.trim() || '—'}</td>
+                    <td className="px-4 py-3 text-gray-700 dark:text-gray-200">{o.customer || '—'}</td>
                     <td className="px-4 py-3 font-semibold">{formatCurrency(o.total_amount)}</td>
                     <td className="px-4 py-3">
-                      <Badge className={getOrderStatusColor(o.status)}>{o.status.replace(/_/g, ' ')}</Badge>
+                      {o.order_status ? (
+                        <Badge className={getOrderStatusColor(o.order_status)}>{o.order_status.replace(/_/g, ' ')}</Badge>
+                      ) : '—'}
                     </td>
                     <td className="px-4 py-3 text-gray-400 dark:text-gray-500 text-xs">{formatDate(o.created_at)}</td>
                     <td className="px-4 py-3">

@@ -1,5 +1,5 @@
 import { useEffect, useState } from 'react';
-import { useParams, useLocation, Link } from 'react-router-dom';
+import { useParams, Link } from 'react-router-dom';
 import { CheckCircle, Copy, Building2 } from 'lucide-react';
 import { ordersService } from '../../services/orders.service';
 import { formatCurrency } from '../../utils/format';
@@ -8,18 +8,25 @@ import toast from 'react-hot-toast';
 
 export default function OrderConfirmationPage() {
   const { id } = useParams<{ id: string }>();
-  const location = useLocation();
-  const [bankDetails, setBankDetails] = useState<BankDetails | null>(
-    location.state?.orderData || null
-  );
-  const [loading, setLoading] = useState(!location.state?.orderData);
+  const [bankDetails, setBankDetails] = useState<BankDetails | null>(null);
+  const [loading, setLoading] = useState(true);
 
+  // Always fetch from /api/orders/{id}/bank-details — this is the one
+  // endpoint whose response actually matches the BankDetails shape this
+  // page renders. Previously this page tried to reuse the raw response
+  // from POST /api/orders (passed via router navigation state) to skip
+  // this fetch, but that response uses different field names entirely
+  // (deposit_required vs deposit_amount, bank_details vs bank, etc.) —
+  // so every field silently came back undefined and "Bank Transfer
+  // Details" showed as unconfigured even when it was. One source of
+  // truth avoids this class of bug recurring.
   useEffect(() => {
-    if (!id || bankDetails) return;
+    if (!id) return;
+    setLoading(true);
     ordersService.getBankDetails(parseInt(id))
       .then(setBankDetails)
       .finally(() => setLoading(false));
-  }, [id, bankDetails]);
+  }, [id]);
 
   const copy = (text: string) => {
     navigator.clipboard.writeText(text);
