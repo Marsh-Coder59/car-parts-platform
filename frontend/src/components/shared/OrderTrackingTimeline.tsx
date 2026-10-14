@@ -1,5 +1,5 @@
 import { useEffect, useRef, useState } from 'react';
-import { CheckCircle2, CreditCard, PackageCheck, Truck, Home, Circle } from 'lucide-react';
+import { CheckCircle2, CreditCard, ShieldCheck, PackageCheck, Truck, Home, ClipboardList } from 'lucide-react';
 import type { Order } from '../../types';
 
 interface Props {
@@ -9,37 +9,44 @@ interface Props {
 type StepState = 'done' | 'current' | 'upcoming';
 
 const STEP_ORDER = [
-  'PAYMENT_CONFIRMED',
+  'PLACED',
+  'PAYMENT_VERIFICATION',
+  'PROCESSING',
   'READY_FOR_DISPATCH',
   'DISPATCHED',
   'OUT_FOR_DELIVERY',
   'DELIVERED',
 ] as const;
 
-const STEP_META: Record<(typeof STEP_ORDER)[number], { label: string; icon: typeof CheckCircle2 }> = {
-  PAYMENT_CONFIRMED: { label: 'Payment Confirmed', icon: CreditCard },
-  READY_FOR_DISPATCH: { label: 'Added to Dispatch', icon: PackageCheck },
-  DISPATCHED: { label: 'Dispatched', icon: Truck },
-  OUT_FOR_DELIVERY: { label: 'Out for Delivery', icon: Truck },
-  DELIVERED: { label: 'Delivered', icon: Home },
+type StepKey = (typeof STEP_ORDER)[number];
+
+const STEP_META: Record<StepKey, { label: string; sub: string; icon: typeof CheckCircle2 }> = {
+  PLACED: { label: 'Order Placed', sub: 'Awaiting your deposit payment', icon: ClipboardList },
+  PAYMENT_VERIFICATION: { label: 'Payment Verification', sub: 'Our team is confirming your deposit', icon: ShieldCheck },
+  PROCESSING: { label: 'Payment Confirmed', sub: 'Your order is being prepared', icon: CreditCard },
+  READY_FOR_DISPATCH: { label: 'Added to Dispatch', sub: 'Packed and ready to leave the warehouse', icon: PackageCheck },
+  DISPATCHED: { label: 'Dispatched', sub: 'On its way to the courier', icon: Truck },
+  OUT_FOR_DELIVERY: { label: 'Out for Delivery', sub: 'Heading to you now', icon: Truck },
+  DELIVERED: { label: 'Delivered', sub: 'Order received', icon: Home },
 };
 
-// Maps the order's real backend status onto how far along our 5-step
-// tracker it is. Anything before PROCESSING (payment not yet confirmed)
-// means step 0 hasn't happened yet — this tracker starts once the
-// deposit is verified, matching what was asked ("from confirmation of
-// the payment onward").
+// Every real backend order_status maps onto exactly one step in the
+// 7-step tracker above, so there's always something meaningful to show
+// regardless of how early or late the order is in its lifecycle —
+// previously this only started rendering after payment was confirmed,
+// so an order still awaiting deposit showed nothing that looked like a
+// tracker at all.
 const STATUS_TO_STEP_INDEX: Record<string, number> = {
-  PENDING: -1,
-  AWAITING_DEPOSIT: -1,
-  DEPOSIT_VERIFICATION: -1,
-  PROCESSING: 0,
-  READY_FOR_DISPATCH: 1,
-  DISPATCHED: 2,
-  OUT_FOR_DELIVERY: 3,
-  DELIVERED: 4,
-  AWAITING_BALANCE: 4,
-  COMPLETED: 4,
+  PENDING: 0,
+  AWAITING_DEPOSIT: 0,
+  DEPOSIT_VERIFICATION: 1,
+  PROCESSING: 2,
+  READY_FOR_DISPATCH: 3,
+  DISPATCHED: 4,
+  OUT_FOR_DELIVERY: 5,
+  DELIVERED: 6,
+  AWAITING_BALANCE: 6,
+  COMPLETED: 6,
 };
 
 function useAnimatedDeliveryProgress(order: Order): number {
@@ -65,24 +72,19 @@ function useAnimatedDeliveryProgress(order: Order): number {
     // smoothly and believably without pretending to track a real vehicle.
     const dispatchedAt = delivery?.dispatched_at ? new Date(delivery.dispatched_at).getTime() : null;
     const estimatedAt = delivery?.estimated_date ? new Date(delivery.estimated_date).getTime() : null;
-    // Default assumed transit window when no estimate was set by the admin.
-    const DEFAULT_WINDOW_MS = 3 * 24 * 60 * 60 * 1000; // 3 days
+    const DEFAULT_WINDOW_MS = 3 * 24 * 60 * 60 * 1000; // 3 days, used when no estimate was set
 
     function computeTarget(): number {
       if (!dispatchedAt) return order.order_status === 'OUT_FOR_DELIVERY' ? 60 : 10;
       const windowMs = estimatedAt && estimatedAt > dispatchedAt ? estimatedAt - dispatchedAt : DEFAULT_WINDOW_MS;
       const elapsed = Date.now() - dispatchedAt;
       const raw = (elapsed / windowMs) * 100;
-      // Cap below 100 — only an explicit DELIVERED status (handled above)
-      // is allowed to show 100%, so it never looks "arrived" prematurely.
       return Math.max(4, Math.min(97, raw));
     }
 
     targetRef.current = computeTarget();
+    setDisplayPct(targetRef.current);
 
-    // Animate toward the target with a small continuous drift so the bar
-    // feels alive rather than static, re-settling toward the real
-    // time-based estimate periodically.
     const tick = setInterval(() => {
       targetRef.current = computeTarget();
       setDisplayPct(prev => {
@@ -92,7 +94,6 @@ function useAnimatedDeliveryProgress(order: Order): number {
       });
     }, 2500);
 
-    setDisplayPct(targetRef.current);
     return () => clearInterval(tick);
   }, [order.order_status, delivery?.dispatched_at, delivery?.estimated_date]);
 
@@ -100,25 +101,16 @@ function useAnimatedDeliveryProgress(order: Order): number {
 }
 
 export default function OrderTrackingTimeline({ order }: Props) {
-  const currentStepIndex = STATUS_TO_STEP_INDEX[order.order_status] ?? -1;
+  const currentStepIndex = STATUS_TO_STEP_INDEX[order.order_status] ?? 0;
   const progress = useAnimatedDeliveryProgress(order);
   const isCancelledOrReturned = ['CANCELLED', 'RETURN_REQUESTED', 'RETURNED', 'REFUNDED'].includes(order.order_status);
 
   if (isCancelledOrReturned) {
     return (
       <div className="bg-white dark:bg-dark-800 rounded-xl border border-gray-100 dark:border-dark-700 p-5">
-        <p className="text-sm font-semibold text-gray-700 dark:text-gray-200">
-          This order's tracking isn't applicable — current status: {order.order_status.replace(/_/g, ' ')}.
-        </p>
-      </div>
-    );
-  }
-
-  if (currentStepIndex < 0) {
-    return (
-      <div className="bg-white dark:bg-dark-800 rounded-xl border border-gray-100 dark:border-dark-700 p-5">
-        <p className="text-sm text-gray-500 dark:text-gray-400">
-          Tracking will appear here once your payment is confirmed.
+        <h2 className="text-sm font-bold text-gray-900 dark:text-gray-50 mb-2">Order Tracking</h2>
+        <p className="text-sm text-gray-600 dark:text-gray-300">
+          This order's status is <strong>{order.order_status.replace(/_/g, ' ')}</strong> — tracking isn't applicable.
         </p>
       </div>
     );
@@ -128,21 +120,21 @@ export default function OrderTrackingTimeline({ order }: Props) {
     <div className="bg-white dark:bg-dark-800 rounded-xl border border-gray-100 dark:border-dark-700 p-5">
       <h2 className="text-sm font-bold text-gray-900 dark:text-gray-50 mb-5">Order Tracking</h2>
 
-      {/* Step row */}
-      <div className="flex items-start">
+      <div className="relative pl-1">
         {STEP_ORDER.map((key, idx) => {
           const meta = STEP_META[key];
           const Icon = meta.icon;
           const state: StepState = idx < currentStepIndex ? 'done' : idx === currentStepIndex ? 'current' : 'upcoming';
           const isLast = idx === STEP_ORDER.length - 1;
+          const showDeliveryAnimation = key === 'OUT_FOR_DELIVERY' && state === 'current';
+
           return (
-            <div key={key} className="flex-1 flex flex-col items-center relative">
+            <div key={key} className="relative flex gap-3 pb-6 last:pb-0">
               {!isLast && (
                 <div
-                  className={`absolute top-4 left-1/2 w-full h-0.5 ${
+                  className={`absolute left-[15px] top-8 bottom-0 w-0.5 ${
                     idx < currentStepIndex ? 'bg-brand-500' : 'bg-gray-200 dark:bg-dark-600'
                   }`}
-                  style={{ zIndex: 0 }}
                 />
               )}
               <div
@@ -156,56 +148,48 @@ export default function OrderTrackingTimeline({ order }: Props) {
               >
                 {state === 'done' ? <CheckCircle2 className="h-4 w-4" /> : <Icon className="h-4 w-4" />}
               </div>
-              <p
-                className={`mt-2 text-[11px] text-center leading-tight px-1 ${
-                  state === 'upcoming' ? 'text-gray-400 dark:text-gray-500' : 'text-gray-900 dark:text-gray-50 font-medium'
-                }`}
-              >
-                {meta.label}
-              </p>
+              <div className="pt-1 flex-1 min-w-0">
+                <p className={`text-sm font-semibold ${state === 'upcoming' ? 'text-gray-400 dark:text-gray-500' : 'text-gray-900 dark:text-gray-50'}`}>
+                  {meta.label}
+                </p>
+                {state !== 'upcoming' && (
+                  <p className="text-xs text-gray-500 dark:text-gray-400 mt-0.5">{meta.sub}</p>
+                )}
+
+                {showDeliveryAnimation && (
+                  <div className="mt-3">
+                    <div className="flex items-center justify-between mb-1.5">
+                      <span className="text-xs text-gray-500 dark:text-gray-400">Estimated progress</span>
+                      <span className="text-xs font-bold text-brand-600">{Math.round(progress)}% of the way</span>
+                    </div>
+                    <div className="relative h-2 bg-gray-100 dark:bg-dark-700 rounded-full overflow-hidden">
+                      <div
+                        className="absolute inset-y-0 left-0 bg-gradient-to-r from-brand-400 to-brand-500 rounded-full transition-all duration-[2500ms] ease-linear"
+                        style={{ width: `${progress}%` }}
+                      />
+                    </div>
+                    <p className="text-[11px] text-gray-400 dark:text-gray-500 mt-2">
+                      Estimated, not live GPS tracking.
+                    </p>
+                    {order.delivery?.courier && (
+                      <p className="text-xs text-gray-600 dark:text-gray-300 mt-2">
+                        Courier: <span className="font-medium">{order.delivery.courier}</span>
+                        {order.delivery.tracking_number && <> · Tracking #: <span className="font-mono">{order.delivery.tracking_number}</span></>}
+                      </p>
+                    )}
+                  </div>
+                )}
+
+                {key === 'DELIVERED' && state === 'current' && order.delivery?.delivered_at && (
+                  <p className="text-xs text-gray-500 dark:text-gray-400 mt-1">
+                    {new Date(order.delivery.delivered_at).toLocaleString()}
+                  </p>
+                )}
+              </div>
             </div>
           );
         })}
       </div>
-
-      {/* Animated "closeness" bar — only while out for delivery or dispatched */}
-      {(order.order_status === 'OUT_FOR_DELIVERY' || order.order_status === 'DISPATCHED') && (
-        <div className="mt-6 pt-5 border-t border-gray-100 dark:border-dark-700">
-          <div className="flex items-center justify-between mb-2">
-            <p className="text-xs font-semibold text-gray-700 dark:text-gray-200">
-              {order.order_status === 'OUT_FOR_DELIVERY' ? 'On its way to you' : 'Preparing for the road'}
-            </p>
-            <p className="text-xs font-bold text-brand-600">{Math.round(progress)}% of the way</p>
-          </div>
-          <div className="relative h-2 bg-gray-100 dark:bg-dark-700 rounded-full overflow-hidden">
-            <div
-              className="absolute inset-y-0 left-0 bg-gradient-to-r from-brand-400 to-brand-500 rounded-full transition-all duration-[2500ms] ease-linear"
-              style={{ width: `${progress}%` }}
-            />
-          </div>
-          <div className="relative h-0 mt-1" aria-hidden="true">
-            <Truck
-              className="h-4 w-4 text-brand-500 absolute -top-[1.65rem] transition-all duration-[2500ms] ease-linear"
-              style={{ left: `calc(${progress}% - 8px)` }}
-            />
-          </div>
-          <p className="text-[11px] text-gray-400 dark:text-gray-500 mt-3">
-            This is an estimated progress indicator, not live GPS tracking.
-          </p>
-          {order.delivery?.courier && (
-            <p className="text-xs text-gray-600 dark:text-gray-300 mt-2">
-              Courier: <span className="font-medium">{order.delivery.courier}</span>
-              {order.delivery.tracking_number && <> · Tracking #: <span className="font-mono">{order.delivery.tracking_number}</span></>}
-            </p>
-          )}
-        </div>
-      )}
-
-      {order.order_status === 'DELIVERED' && order.delivery?.delivered_at && (
-        <p className="mt-5 pt-4 border-t border-gray-100 dark:border-dark-700 text-xs text-gray-500 dark:text-gray-400 flex items-center gap-1.5">
-          <Circle className="h-2 w-2 fill-green-500 text-green-500" /> Delivered on {new Date(order.delivery.delivered_at).toLocaleString()}
-        </p>
-      )}
     </div>
   );
 }
