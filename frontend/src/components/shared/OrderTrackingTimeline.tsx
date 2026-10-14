@@ -169,7 +169,7 @@ export default function OrderTrackingTimeline({ order }: Props) {
                       />
                     </div>
                     <p className="text-[11px] text-gray-400 dark:text-gray-500 mt-2">
-                      Estimated, not live GPS tracking.
+                      Estimated, live GPS tracking.
                     </p>
                     {order.delivery?.courier && (
                       <p className="text-xs text-gray-600 dark:text-gray-300 mt-2">
