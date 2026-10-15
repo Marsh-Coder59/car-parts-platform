@@ -1,4 +1,4 @@
-import { useEffect, useRef, useState } from 'react';
+import { useEffect, useState } from 'react';
 import { CheckCircle2, CreditCard, ShieldCheck, PackageCheck, Truck, Home, ClipboardList } from 'lucide-react';
 import type { Order } from '../../types';
 
@@ -49,27 +49,38 @@ const STATUS_TO_STEP_INDEX: Record<string, number> = {
   COMPLETED: 6,
 };
 
-// How often the displayed percentage re-computes from real elapsed time.
-// Kept short so a short delivery window (e.g. the user's "24 hours"
-// example) still visibly advances rather than looking frozen, while a
-// multi-day window still animates smoothly via the CSS transition on the
-// bar's width between ticks.
-const PROGRESS_TICK_MS = 15_000;
+// Upper/lower bounds for how often the displayed percentage re-computes.
+// The actual interval is scaled to the delivery window itself (below) so
+// a short window still visibly animates — a fixed 15s tick meant a
+// 1-minute test window only got ~4 updates total, and if the page took
+// more than a few seconds to load after saving, the deadline could pass
+// before the bar was ever seen moving at all, making it look broken.
+const MIN_TICK_MS = 1_000;
+const MAX_TICK_MS = 15_000;
+// Roughly this many updates across the whole window, for both a 1-minute
+// test and a 15-day real delivery to feel equally smooth.
+const TARGET_TICKS_ACROSS_WINDOW = 60;
 
 /**
  * Deterministic, real-data-driven delivery progress — deliberately NOT
  * mock/random. 0% at dispatch time, 100% exactly at the admin-set
  * estimated delivery date/time, linear in between, whatever the actual
- * window is (15 days, 24 hours, or anything else the admin sets as
- * deliveries.estimated_date — see migration_007, which widened that
- * column to a full timestamp specifically so sub-day windows like "24
- * hours" can be represented precisely instead of collapsing to
- * midnight). The only thing "mocked" here, as asked for, is that this
- * is a time-based estimate rather than the vehicle's real GPS position.
+ * window is (15 days, 24 hours, 1 minute, or anything else the admin
+ * sets as deliveries.estimated_date — see migration_007, which widened
+ * that column to a full timestamp specifically so sub-day/sub-hour
+ * windows can be represented precisely instead of collapsing to
+ * midnight). The only thing "mocked" here, as asked for, is that this is
+ * a time-based estimate rather than the vehicle's real GPS position.
+ *
+ * Returns both the percentage and the tick interval actually in use, so
+ * the caller can match the CSS transition duration to it — otherwise a
+ * bar animating on a fast tick with a slow (15s) CSS transition looks
+ * like it's lagging behind its own number.
  */
-function useAnimatedDeliveryProgress(order: Order): number {
+function useAnimatedDeliveryProgress(order: Order): { pct: number; tickMs: number } {
   const delivery = order.delivery;
   const [pct, setPct] = useState(0);
+  const [tickMs, setTickMs] = useState(MAX_TICK_MS);
 
   useEffect(() => {
     if (order.order_status === 'DELIVERED' || order.order_status === 'AWAITING_BALANCE' || order.order_status === 'COMPLETED') {
@@ -98,17 +109,23 @@ function useAnimatedDeliveryProgress(order: Order): number {
       return Math.max(0, Math.min(100, raw));
     }
 
+    const windowMs = dispatchedAt && estimatedAt ? estimatedAt - dispatchedAt : null;
+    const interval = windowMs && windowMs > 0
+      ? Math.max(MIN_TICK_MS, Math.min(MAX_TICK_MS, windowMs / TARGET_TICKS_ACROSS_WINDOW))
+      : MAX_TICK_MS;
+    setTickMs(interval);
+
     setPct(compute());
-    const tick = setInterval(() => setPct(compute()), PROGRESS_TICK_MS);
+    const tick = setInterval(() => setPct(compute()), interval);
     return () => clearInterval(tick);
   }, [order.order_status, delivery?.dispatched_at, delivery?.estimated_date]);
 
-  return pct;
+  return { pct, tickMs };
 }
 
 export default function OrderTrackingTimeline({ order }: Props) {
   const currentStepIndex = STATUS_TO_STEP_INDEX[order.order_status] ?? 0;
-  const progress = useAnimatedDeliveryProgress(order);
+  const { pct: progress, tickMs } = useAnimatedDeliveryProgress(order);
   const isCancelledOrReturned = ['CANCELLED', 'RETURN_REQUESTED', 'RETURNED', 'REFUNDED'].includes(order.order_status);
 
   if (isCancelledOrReturned) {
@@ -171,7 +188,7 @@ export default function OrderTrackingTimeline({ order }: Props) {
                     <div className="relative h-2 bg-gray-100 dark:bg-dark-700 rounded-full overflow-hidden">
                       <div
                         className="absolute inset-y-0 left-0 bg-gradient-to-r from-brand-400 to-brand-500 rounded-full transition-all ease-linear"
-                        style={{ width: `${progress}%`, transitionDuration: `${PROGRESS_TICK_MS}ms` }}
+                        style={{ width: `${progress}%`, transitionDuration: `${tickMs}ms` }}
                       />
                     </div>
                     <p className="text-[11px] text-gray-400 dark:text-gray-500 mt-2">
