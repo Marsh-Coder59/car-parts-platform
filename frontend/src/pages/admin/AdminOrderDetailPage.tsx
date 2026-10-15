@@ -179,7 +179,18 @@ export default function AdminOrderDetailPage() {
               </h2>
               {order.deposit_paid && (
                 <Button size="sm" variant="outline" onClick={() => {
-                  if (order.delivery) deliveryForm.reset(order.delivery as unknown as Record<string, unknown>);
+                  if (order.delivery) {
+                    // estimated_date now carries a time component (see
+                    // migration_007) so the delivery progress bar can be
+                    // precise for windows shorter than a day — but a
+                    // datetime-local input needs exactly "YYYY-MM-DDTHH:mm",
+                    // not the full ISO string with seconds, so trim it.
+                    const d = order.delivery as unknown as Record<string, unknown>;
+                    deliveryForm.reset({
+                      ...d,
+                      estimated_date: typeof d.estimated_date === 'string' ? d.estimated_date.slice(0, 16) : '',
+                    });
+                  }
                   setDeliveryModal(true);
                 }}>
                   {order.delivery ? 'Update' : 'Create'} Delivery
@@ -195,7 +206,7 @@ export default function AdminOrderDetailPage() {
                   ['Status', order.delivery.status],
                   ['Courier', order.delivery.courier],
                   ['Tracking', order.delivery.tracking_number],
-                  ['Est. Date', order.delivery.estimated_date ? formatDate(order.delivery.estimated_date) : null],
+                  ['Est. Date', order.delivery.estimated_date ? formatDateTime(order.delivery.estimated_date) : null],
                   ['Dispatched', order.delivery.dispatched_at ? formatDateTime(order.delivery.dispatched_at) : null],
                   ['Delivered', order.delivery.delivered_at ? formatDateTime(order.delivery.delivered_at) : null],
                 ].filter(([, v]) => v).map(([label, value]) => (
@@ -314,7 +325,12 @@ export default function AdminOrderDetailPage() {
           <Input label="Method (e.g. Road, Air)" {...deliveryForm.register('method')} />
           <Input label="Courier" {...deliveryForm.register('courier')} />
           <Input label="Tracking Number" {...deliveryForm.register('tracking_number')} />
-          <Input label="Estimated Delivery Date" type="date" {...deliveryForm.register('estimated_date')} />
+          <Input
+            label="Estimated Delivery Date & Time"
+            type="datetime-local"
+            hint="The customer's delivery progress bar fills from dispatch to exactly this moment — set the real time, not just the date, especially for same-day deliveries."
+            {...deliveryForm.register('estimated_date')}
+          />
           <Textarea label="Notes" rows={2} {...deliveryForm.register('notes')} />
           <div className="flex gap-3">
             <Button type="button" variant="ghost" fullWidth onClick={() => { setDeliveryModal(false); deliveryForm.reset(); }}>

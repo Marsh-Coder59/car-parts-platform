@@ -3220,6 +3220,47 @@ def _validate_transition(current: str, new: str):
         raise HTTPException(status_code=400, detail=f"Cannot transition order from {current} to {new}. Allowed: {allowed}")
 
 
+def _bulk_auto_mark_delivered(cur, conn):
+    """
+    Same auto-completion as _maybe_auto_mark_delivered, but as one bulk
+    statement covering every order whose estimated delivery time has
+    passed — used on the LIST endpoint so an order doesn't sit stuck at
+    "Dispatched" forever just because nobody happened to open that
+    specific order's page after the deadline passed.
+    """
+    cur.execute(
+        """
+        SELECT o.id, o.user_id, o.order_status, d.id
+        FROM orders o JOIN deliveries d ON d.order_id = o.id
+        WHERE o.order_status IN ('DISPATCHED', 'OUT_FOR_DELIVERY')
+          AND d.estimated_date IS NOT NULL
+          AND d.estimated_date <= NOW()
+        """
+    )
+    due = cur.fetchall()
+    if not due:
+        return
+    for order_id, owner_id, old_status, delivery_id in due:
+        cur.execute(
+            "UPDATE deliveries SET status='DELIVERED', delivered_at=NOW(), updated_at=NOW() WHERE id=%s",
+            (delivery_id,),
+        )
+        cur.execute(
+            "UPDATE orders SET order_status='AWAITING_BALANCE', updated_at=NOW() WHERE id=%s AND order_status=%s",
+            (order_id, old_status),
+        )
+        cur.execute(
+            """
+            INSERT INTO order_events (order_id, event_type, description, old_status, new_status, created_at)
+            VALUES (%s, 'STATUS_CHANGE', 'Automatically marked delivered — estimated delivery time reached', %s, 'AWAITING_BALANCE', NOW())
+            """,
+            (order_id, old_status),
+        )
+        notify_order_event(cur, order_id, owner_id, "DELIVERY_DELIVERED", "Order Delivered",
+                           "Your order has been delivered. Please pay the remaining balance to complete your order.")
+    conn.commit()
+
+
 @app.get("/api/orders")
 def list_orders(
     status: Optional[str] = None,
@@ -3233,6 +3274,8 @@ def list_orders(
         cur = conn.cursor()
         user_id = current_user["user_id"]
         role = current_user["role"]
+
+        _bulk_auto_mark_delivered(cur, conn)
 
         query = """
             SELECT o.id, o.order_number, o.total_amount, o.deposit_amount, o.balance_amount,
@@ -3276,6 +3319,63 @@ def list_orders(
             conn.close()
 
 
+def _maybe_auto_mark_delivered(cur, conn, order_id: int) -> bool:
+    """
+    Auto-completes delivery once the admin-set estimated delivery time has
+    passed — the customer's tracking bar animates linearly from 0% (at
+    dispatch) to 100% (at the estimated delivery date/time, whether that
+    window is 15 days or 24 hours), and the moment it would hit 100% the
+    order should actually flip to delivered rather than just sitting at
+    99% forever waiting for an admin to click a button.
+
+    This is a lazy, read-time check (no cron/scheduler in this stack) —
+    called from GET /api/orders/{id}, so it fires the moment anyone
+    (customer tracking page, admin order view) next loads that order
+    after the deadline passes. Mirrors exactly the same transition the
+    admin's manual "mark delivered" action performs (PATCH
+    /api/deliveries/{id}): delivered_at set, order moves to
+    AWAITING_BALANCE, in-app notification + email sent. Returns True if
+    it performed the transition (caller should treat already-fetched
+    order data as stale and re-read).
+    """
+    cur.execute(
+        """
+        SELECT d.id, d.estimated_date, o.order_status, o.user_id
+        FROM deliveries d JOIN orders o ON o.id = d.order_id
+        WHERE d.order_id = %s
+        """,
+        (order_id,),
+    )
+    row = cur.fetchone()
+    if not row:
+        return False
+    delivery_id, estimated_date, order_status, owner_id = row
+    if order_status not in ("DISPATCHED", "OUT_FOR_DELIVERY"):
+        return False
+    if not estimated_date or estimated_date > datetime.now():
+        return False
+
+    cur.execute(
+        "UPDATE deliveries SET status='DELIVERED', delivered_at=NOW(), updated_at=NOW() WHERE id=%s",
+        (delivery_id,),
+    )
+    cur.execute(
+        "UPDATE orders SET order_status='AWAITING_BALANCE', updated_at=NOW() WHERE id=%s AND order_status IN ('DISPATCHED','OUT_FOR_DELIVERY')",
+        (order_id,),
+    )
+    cur.execute(
+        """
+        INSERT INTO order_events (order_id, event_type, description, old_status, new_status, created_at)
+        VALUES (%s, 'STATUS_CHANGE', 'Automatically marked delivered — estimated delivery time reached', %s, 'AWAITING_BALANCE', NOW())
+        """,
+        (order_id, order_status),
+    )
+    notify_order_event(cur, order_id, owner_id, "DELIVERY_DELIVERED", "Order Delivered",
+                       "Your order has been delivered. Please pay the remaining balance to complete your order.")
+    conn.commit()
+    return True
+
+
 @app.get("/api/orders/{order_id}")
 def get_order(order_id: int, current_user: dict = Depends(get_current_user)):
     conn = None
@@ -3284,6 +3384,8 @@ def get_order(order_id: int, current_user: dict = Depends(get_current_user)):
         cur = conn.cursor()
         user_id = current_user["user_id"]
         role = current_user["role"]
+
+        _maybe_auto_mark_delivered(cur, conn, order_id)
 
         cur.execute(
             """
@@ -3991,8 +4093,8 @@ def update_delivery(delivery_id: int, body: DeliveryUpdate, request: Request, cu
             cur.execute("SELECT user_id FROM orders WHERE id=%s", (order_id,))
             owner_row = cur.fetchone()
             if owner_row:
-                create_notification(cur, owner_row[0], "DELIVERY_DELIVERED", "Order Delivered",
-                                    "Your order has been delivered. Please pay the remaining balance to complete your order.")
+                notify_order_event(cur, order_id, owner_row[0], "DELIVERY_DELIVERED", "Order Delivered",
+                                   "Your order has been delivered. Please pay the remaining balance to complete your order.")
 
         cur.execute(
             """

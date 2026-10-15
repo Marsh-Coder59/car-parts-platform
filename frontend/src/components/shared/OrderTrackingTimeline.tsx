@@ -49,55 +49,61 @@ const STATUS_TO_STEP_INDEX: Record<string, number> = {
   COMPLETED: 6,
 };
 
+// How often the displayed percentage re-computes from real elapsed time.
+// Kept short so a short delivery window (e.g. the user's "24 hours"
+// example) still visibly advances rather than looking frozen, while a
+// multi-day window still animates smoothly via the CSS transition on the
+// bar's width between ticks.
+const PROGRESS_TICK_MS = 15_000;
+
+/**
+ * Deterministic, real-data-driven delivery progress — deliberately NOT
+ * mock/random. 0% at dispatch time, 100% exactly at the admin-set
+ * estimated delivery date/time, linear in between, whatever the actual
+ * window is (15 days, 24 hours, or anything else the admin sets as
+ * deliveries.estimated_date — see migration_007, which widened that
+ * column to a full timestamp specifically so sub-day windows like "24
+ * hours" can be represented precisely instead of collapsing to
+ * midnight). The only thing "mocked" here, as asked for, is that this
+ * is a time-based estimate rather than the vehicle's real GPS position.
+ */
 function useAnimatedDeliveryProgress(order: Order): number {
   const delivery = order.delivery;
-  const [displayPct, setDisplayPct] = useState(0);
-  const targetRef = useRef(0);
+  const [pct, setPct] = useState(0);
 
   useEffect(() => {
     if (order.order_status === 'DELIVERED' || order.order_status === 'AWAITING_BALANCE' || order.order_status === 'COMPLETED') {
-      targetRef.current = 100;
-      setDisplayPct(100);
+      setPct(100);
       return;
     }
     if (order.order_status !== 'OUT_FOR_DELIVERY' && order.order_status !== 'DISPATCHED') {
-      targetRef.current = 0;
-      setDisplayPct(0);
+      setPct(0);
       return;
     }
 
-    // Mock progress — explicitly NOT real GPS/geolocation. We estimate how
-    // "close" the delivery is purely from elapsed time between when it was
-    // dispatched and when it's estimated to arrive, so the number moves
-    // smoothly and believably without pretending to track a real vehicle.
     const dispatchedAt = delivery?.dispatched_at ? new Date(delivery.dispatched_at).getTime() : null;
     const estimatedAt = delivery?.estimated_date ? new Date(delivery.estimated_date).getTime() : null;
-    const DEFAULT_WINDOW_MS = 3 * 24 * 60 * 60 * 1000; // 3 days, used when no estimate was set
 
-    function computeTarget(): number {
-      if (!dispatchedAt) return order.order_status === 'OUT_FOR_DELIVERY' ? 60 : 10;
-      const windowMs = estimatedAt && estimatedAt > dispatchedAt ? estimatedAt - dispatchedAt : DEFAULT_WINDOW_MS;
-      const elapsed = Date.now() - dispatchedAt;
-      const raw = (elapsed / windowMs) * 100;
-      return Math.max(4, Math.min(97, raw));
+    function compute(): number {
+      // No dispatch timestamp or no admin-set estimate yet — nothing real
+      // to compute from, so sit at 0 rather than invent a number.
+      if (!dispatchedAt || !estimatedAt || estimatedAt <= dispatchedAt) return 0;
+      const windowMs = estimatedAt - dispatchedAt;
+      const elapsedMs = Date.now() - dispatchedAt;
+      const raw = (elapsedMs / windowMs) * 100;
+      // Reaches a true, uncapped 100 right at the estimated deadline — the
+      // backend auto-marks the order DELIVERED at that same moment (see
+      // _maybe_auto_mark_delivered), so this and the order's real status
+      // cross the finish line together.
+      return Math.max(0, Math.min(100, raw));
     }
 
-    targetRef.current = computeTarget();
-    setDisplayPct(targetRef.current);
-
-    const tick = setInterval(() => {
-      targetRef.current = computeTarget();
-      setDisplayPct(prev => {
-        const jitter = (Math.random() - 0.3) * 0.6; // gentle forward drift
-        const next = prev + (targetRef.current - prev) * 0.15 + jitter;
-        return Math.max(2, Math.min(97, next));
-      });
-    }, 2500);
-
+    setPct(compute());
+    const tick = setInterval(() => setPct(compute()), PROGRESS_TICK_MS);
     return () => clearInterval(tick);
   }, [order.order_status, delivery?.dispatched_at, delivery?.estimated_date]);
 
-  return displayPct;
+  return pct;
 }
 
 export default function OrderTrackingTimeline({ order }: Props) {
@@ -164,12 +170,12 @@ export default function OrderTrackingTimeline({ order }: Props) {
                     </div>
                     <div className="relative h-2 bg-gray-100 dark:bg-dark-700 rounded-full overflow-hidden">
                       <div
-                        className="absolute inset-y-0 left-0 bg-gradient-to-r from-brand-400 to-brand-500 rounded-full transition-all duration-[2500ms] ease-linear"
-                        style={{ width: `${progress}%` }}
+                        className="absolute inset-y-0 left-0 bg-gradient-to-r from-brand-400 to-brand-500 rounded-full transition-all ease-linear"
+                        style={{ width: `${progress}%`, transitionDuration: `${PROGRESS_TICK_MS}ms` }}
                       />
                     </div>
                     <p className="text-[11px] text-gray-400 dark:text-gray-500 mt-2">
-                      Estimated, live GPS tracking.
+                      Estimated, not live GPS tracking.
                     </p>
                     {order.delivery?.courier && (
                       <p className="text-xs text-gray-600 dark:text-gray-300 mt-2">
